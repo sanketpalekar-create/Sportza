@@ -4,6 +4,8 @@
 
 Sportza is the smart platform for booking sports venues, training, and performance tracking. **Book. Train. Track.**
 
+**Cursor mobile / Cloud Agents:** See [docs/CURSOR_MOBILE_SETUP.md](docs/CURSOR_MOBILE_SETUP.md) — connect GitHub, use [cursor.com/agents](https://cursor.com/agents) on your phone with repo `sanketpalekar-create/Sportza`.
+
 ## Features
 
 - **User Management**: Registration, Auth0 authentication (Google SSO, Email OTP, Magic Link), and user profiles
