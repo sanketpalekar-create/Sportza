@@ -1,0 +1,318 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Requirements — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>Business Requirements — Sportza</h1>
+    <p class="subtitle">Vision · Capabilities · Stakeholders · Screens</p>
+    <p class="version">v1.3 — Last updated Apr 2026</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI/UX Summary</a>
+    <a href="booking-state-and-flows.html">Booking State & Flows</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+    <section class="section">
+      <h2>1. Executive Summary</h2>
+      <p>The platform enables <strong>venue owners</strong> to list and monetize sports facilities, <strong>players</strong> to discover and book slots, form <strong>open plays</strong> and <strong>tournaments</strong>, and track <strong>match results</strong> and <strong>player statistics</strong>. It supports multiple sports, flexible pricing (including batch/trainer discounts), split payments, venue add-ons, and structured tournaments with system-generated fixtures.</p>
+    </section>
+
+    <section class="section">
+      <h2>2. Vision & Objectives</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Objective</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Venue monetization</strong></td>
+            <td>Venues can offer multiple facilities per sport, set per-sport and time-slot pricing, and sell add-ons (beverages, equipment rent, eatables). At onboarding, a platform commission % is agreed; for every booking the platform keeps the commission and the venue receives the net payout.</td>
+          </tr>
+          <tr>
+            <td><strong>Trainer monetization</strong></td>
+            <td>Trainers run batches; at onboarding a platform commission % per batch can be agreed. For every batch fee payment recorded, the platform keeps the commission and the trainer receives the net amount.</td>
+          </tr>
+          <tr>
+            <td><strong>Player discovery</strong></td>
+            <td>Players discover venues (by sport, city, search), trainers (by sport, city), and batches (by sport, city). One trainer can teach multiple sports. Venue and trainer profiles show average rating and review count; players post reviews (venue: any time; trainer: only after completing ≥1 month in a batch).</td>
+          </tr>
+          <tr>
+            <td><strong>Flexible payment</strong></td>
+            <td>Support full payment (one payer) or split payment (each participant pays their share); add-on purchases are attributed to the purchaser and added to their share when split.</td>
+          </tr>
+          <tr>
+            <td><strong>Open play</strong></td>
+            <td>A booker can create a joinable "open play" for a format; others join and pay. Confirmation is payment-priority based: first booking to reach ≥50% paid wins the slot; no auto-cancel at T-30. See <a href="booking-state-and-flows.html">BOOKING_STATE_AND_FLOWS</a>.</td>
+          </tr>
+          <tr>
+            <td><strong>Tournaments</strong></td>
+            <td>Users can create tournaments, register teams/players, and let the system generate matchup slots (knockout or round-robin). Match scoring flows into player stats; winner and runner-up are recorded. Sponsor visibility increases with scale.</td>
+          </tr>
+          <tr>
+            <td><strong>Real-time scoring</strong></td>
+            <td>Match scores support multiple sports and formats (cricket, tennis, padel, pickleball). Live score updates via Socket.io; score structure and validation per sport/format.</td>
+          </tr>
+          <tr>
+            <td><strong>Trainer monthly reviews</strong></td>
+            <td>Trainers rate each player in their batch monthly on sport and cognitive parameters; players track month-on-month progress alongside match stats.</td>
+          </tr>
+          <tr>
+            <td><strong>Stats and leaderboards</strong></td>
+            <td>Per-sport stats (e.g. runs, goals) and match history drive leaderboards and player profiles.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>3. Stakeholders</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Player</strong></td>
+            <td>Discovers venues, trainers, and batches; books facilities; joins batches and open plays; participates in matches and tournaments; posts venue/trainer reviews (trainer review only after ≥1 month with trainer); views stats and monthly batch progress.</td>
+          </tr>
+          <tr>
+            <td><strong>Venue owner</strong></td>
+            <td>Registers venues, sets facilities and pricing, manages add-ons, sees bookings and monthly commission/venue net reports.</td>
+          </tr>
+          <tr>
+            <td><strong>Trainer</strong></td>
+            <td>Runs batches, associates with venues, submits monthly player reviews, receives batch fee payments and monthly trainer net reports.</td>
+          </tr>
+          <tr>
+            <td><strong>Admin</strong></td>
+            <td>Manages sports, venues, and platform configuration; accesses platform monthly commission reports.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>4. Business Capabilities</h2>
+      <ol>
+        <li><strong>Venue and facility management</strong> — Multi-facility venues; facilities can support multiple sports; per-sport and time-slot pricing with GST.</li>
+        <li><strong>Booking and payments</strong> — Slot booking with conflict checks; full or split payment; payment gateway integration; add-on purchases attached to booking and to the purchasing user in split mode.</li>
+        <li><strong>Open play</strong> — Create open play from a booking; others discover and join; confirmation is payment-priority based (first to ≥50% paid wins); no auto-cancel at T-30.</li>
+        <li><strong>Matches and scoring</strong> — Create matches from a booking or tournament fixture; real-time scoring by sport/format; record scores and per-player stats; live updates via Socket.io.</li>
+        <li><strong>Tournaments</strong> — Create tournament; register teams; generate fixture slots (knockout / round-robin); create matches from slots; record winner and runner-up.</li>
+        <li><strong>Batches</strong> — Trainer-defined batches with optional venue link and per-player fees; batch fee payments with platform commission and trainer net payout; batch discovery and player join; monthly player reviews by trainer.</li>
+        <li><strong>Discovery and ratings</strong> — Players discover venues, trainers, and batches by sport and location. Venue and trainer reviews (1–5 + optional text); average rating on profiles. Trainer review only after ≥1 month in batch.</li>
+        <li><strong>Player stats</strong> — Sport-specific stats and leaderboards driven by completed matches; player monthly batch progress (trainer reviews) as add-on.</li>
+        <li><strong>Monetization</strong> — Per-venue commission % on bookings; per-batch commission % on batch fee payments. Monthly reports aggregate platform commission and net amounts. Tournament sponsor monetization.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>5. Success Criteria</h2>
+      <ul>
+        <li>Venues can list facilities, set pricing, and receive bookings with correct amounts (including add-ons and split logic).</li>
+        <li>Players can discover venues, trainers, and batches by sport and location; venue and trainer profiles show average rating and review count.</li>
+        <li>Open play and split bookings confirm when ≥50% paid (payment-priority); no auto-cancel at T-30. Solo and batch bookings confirm immediately on payment. Refunds: manual cancel 95% (5% fee); conflict 100%.</li>
+        <li>Monthly reports (venue, trainer, platform) correctly aggregate commission and net revenue by calendar month for settlement.</li>
+        <li>Tournaments support configurable teams and system-generated slots; match results and winner/runner-up are stored and reflected in stats.</li>
+        <li>Players can view their own and others' stats and match history; players can view their monthly batch progress (trainer reviews).</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>6. Out of Scope</h2>
+      <ul>
+        <li>Detailed UI/UX specifications (covered in FRD or design docs).</li>
+        <li>Non-functional requirements (performance, security policy) as a separate NFR document.</li>
+        <li>Mobile app specifics; BRD applies to the platform capabilities (API-first).</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>7. Application Screens</h2>
+      <p>Implemented in the mobile app (Figma dark theme) at <code>/app</code> and auth at <code>/login</code>, <code>/register</code>. Auth uses Auth0 (Google SSO, Email OTP, Magic Link).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Screen</th>
+            <th>Purpose</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Auth</td>
+            <td>Login</td>
+            <td>Auth0 (Google SSO, Email OTP, Magic Link); link to Register</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Auth</td>
+            <td>Register</td>
+            <td>Auth0 sign-up; Name, email, phone (optional), city (optional); minimal clicks</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Entry</td>
+            <td>Splash</td>
+            <td>First screen before auth</td>
+            <td><span class="badge-missing">Pending</span></td>
+          </tr>
+          <tr>
+            <td>Entry</td>
+            <td>Forgot password</td>
+            <td>Reset flow from Login</td>
+            <td><span class="badge-missing">Pending</span></td>
+          </tr>
+          <tr>
+            <td>Home</td>
+            <td>Home tab</td>
+            <td>Welcome, quick actions, next game, featured venues</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Booking</td>
+            <td>Venue Detail</td>
+            <td>Image, name, rating, location, price; facility & date; Ratings & reviews block; Select Slot</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Booking</td>
+            <td>Time Slot</td>
+            <td>Slot grid (Morning/Afternoon/Evening); duration + total; Continue</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Booking</td>
+            <td>Payment</td>
+            <td>Total, payment UI; Pay Now; nav hidden</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Booking</td>
+            <td>Confirmation</td>
+            <td>Success, booking ID, Add to Calendar, Create Open Play, View Booking</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Bookings</td>
+            <td>Bookings tab</td>
+            <td>Upcoming / Completed; booking cards; Details</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Open Play</td>
+            <td>Open Play tab</td>
+            <td>Discover / My Open Plays; Host a Session</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Stats</td>
+            <td>Stats overview</td>
+            <td>Sport filter, summary cards, performance chart, leaderboard preview, match history</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Matches</td>
+            <td>Live Match</td>
+            <td>In-game scoring (simple, cricket, tennis); Start/Complete; nav hidden</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Profile</td>
+            <td>Profile tab</td>
+            <td>User card, stats, menu (Edit Profile, Payment Methods, Notifications, Settings, Help, Log out)</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Discovery</td>
+            <td>Trainer List</td>
+            <td>Search, sport/city filters; trainer cards (sports, city, rating, review count)</td>
+            <td><span class="badge-done">Designed</span></td>
+          </tr>
+          <tr>
+            <td>Profile</td>
+            <td>Edit Profile, My Sports, Settings, Notifications, Support</td>
+            <td>Account and preferences</td>
+            <td><span class="badge-missing">Pending</span></td>
+          </tr>
+          <tr>
+            <td>Other</td>
+            <td>Create Tournament</td>
+            <td>Full flow</td>
+            <td><span class="badge-missing">Pending</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>8. References</h2>
+      <ul>
+        <li><a href="traceability.html">Traceability</a> — central index of all documents and BRD → FRD → TSD/implementation mapping.</li>
+        <li><a href="frd.html">Functional requirements (FRD)</a></li>
+        <li><a href="tsd.html">Technical specification (TSD)</a></li>
+        <li><a href="data-model.html">Data model</a></li>
+        <li><a href="booking-state-and-flows.html">Booking state & flows</a> — master booking logic, 14 use cases, refund rules, payment-priority.</li>
+        <li><a href="navigation.html">Navigation (UX)</a> — bottom nav, role switch (Venue Owner, Trainer).</li>
+        <li><a href="payment-gateway-architecture.html">Payment gateway architecture</a> — Razorpay; UPI, Card, Net Banking, Wallet.</li>
+        <li><a href="implementation-status.html">Implementation status</a> — what is implemented vs missing.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>9. Traceability</h2>
+      <ul>
+        <li><strong>BRD → FRD:</strong> Each business capability in §4 maps to one or more FRD modules (see <a href="traceability.html">TRACEABILITY</a> §2).</li>
+        <li><strong>BRD → Implementation:</strong> Via FRD and TSD; data model and <code>apps/api</code> routes implement the capabilities. Platform built as Turborepo monorepo: <code>apps/web</code> (Vite, React, Tailwind, Auth0), <code>apps/api</code> (Express, Prisma/MySQL), <code>packages/ui</code>, <code>packages/api-client</code>.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
+

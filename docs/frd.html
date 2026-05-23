@@ -1,0 +1,236 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Functional Requirements — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>Functional Requirements — Sportza</h1>
+    <p class="subtitle">Modules · API · Screens · Traceability</p>
+    <p class="version">v1.5 — Last updated Apr 2026</p>
+  </header>
+
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI/UX Summary</a>
+    <a href="booking-state-and-flows.html">Booking State & Flows</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+
+  <main class="container">
+    <section class="section">
+      <h2>1. Introduction</h2>
+      <p>This document describes <strong>functional requirements</strong> for <strong>Sportza</strong> (sports venue booking &amp; tournament platform). It is aligned with the Data Model and BRD. Requirements are grouped by module and expressed as capabilities and API behaviour.</p>
+    </section>
+
+    <section class="section">
+      <h2>2. Actors</h2>
+      <table>
+        <tr><th>Actor</th><th>Description</th></tr>
+        <tr><td>User (unauthenticated)</td><td>Can view public info (e.g. sports list, venue list, leaderboard)</td></tr>
+        <tr><td>User (authenticated)</td><td>Logged-in user; role can be player, venue_owner, trainer, or admin</td></tr>
+        <tr><td>Player</td><td>Books slots, creates/joins open plays, creates/plays matches and tournaments, views stats</td></tr>
+        <tr><td>Venue owner</td><td>Creates/updates venues, views bookings for their venues</td></tr>
+        <tr><td>Trainer</td><td>Creates batches, manages players, records attendance, tracks payments, posts announcements, manages profile</td></tr>
+        <tr><td>Admin</td><td>Full access; can manage sports, venues, and users</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>3. Authentication and Authorization</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-AUTH-1</td><td>Users register/login via <strong>Auth0</strong> (Google SSO, Email OTP via Redis, Magic Link). Auth0 JWT used for API auth.</td><td>Must</td></tr>
+        <tr><td>FR-AUTH-2</td><td>Role-based access: player, venue_owner, trainer, admin. Endpoints enforce role where needed.</td><td>Must</td></tr>
+        <tr><td>FR-AUTH-3</td><td>Venue owner can only modify their own venues; trainer only their batches; tournament creator only their tournament.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>4. Sports and Venues</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-SPORT-1</td><td>List active sports (formats, default pricing, stat fields). Create/update sport (admin).</td><td>Must</td></tr>
+        <tr><td>FR-SPORT-2</td><td>Venue has multiple sport facilities; each facility can support multiple sports. Conflict check is per facility and time.</td><td>Must</td></tr>
+        <tr><td>FR-VENUE-1</td><td>CRUD venues (venue_owner/admin). Set sportFacilities (including optional surfaceType), sportRates, location, gstRate, availability.</td><td>Must</td></tr>
+        <tr><td>FR-VENUE-2</td><td>Venue can define add-ons (beverage, equipment_rent, eatable, other) with name, category, price, unit.</td><td>Must</td></tr>
+        <tr><td>FR-VENUE-3</td><td>List venues with filters; GET venue with averageRating, reviewCount; reviews API: GET/POST/DELETE.</td><td>Must</td></tr>
+        <tr><td>FR-VENUE-4</td><td>Venue has commissionPercent (0–100); set at onboarding; used for platform commission and venue net payout.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. Booking and Payments</h2>
+      <p><strong>Booking:</strong> Create single or multi-court booking; full/split payment; add-ons (attributed to purchaser in split); commission on base only; refund policy: manual 95%, conflict 100%.</p>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-BOOK-1</td><td>Create booking: venue, facilityId, facilityName, sport, date, time; optional batch for discount.</td><td>Must</td></tr>
+        <tr><td>FR-BOOK-1a</td><td>Multi-court booking: multiple facilities, grouped bookings atomically (groupId).</td><td>Must</td></tr>
+        <tr><td>FR-BOOK-2</td><td>Payment type full (one payer) or split (N participants); split amounts must sum to totalAmount.</td><td>Must</td></tr>
+        <tr><td>FR-BOOK-3</td><td>Add-on purchase: POST add-on; purchaser = current user; increases total and purchaser's share.</td><td>Must</td></tr>
+        <tr><td>FR-BOOK-5</td><td>Commission on base only; add-ons increase totalAmount and venueNetAmount; platformCommissionAmount unchanged.</td><td>Must</td></tr>
+        <tr><td>FR-PAY-1</td><td>Create payment order; verify and capture; Razorpay for all payments.</td><td>Must</td></tr>
+        <tr><td>FR-PAY-3</td><td>Payment methods: UPI, Card, Net Banking via Razorpay Checkout.</td><td>Must</td></tr>
+        <tr><td>FR-PAY-4</td><td>Refunds: manual → 95% refund (5% fee); conflict → 100% refund.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>6. Open Play</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-OP-1</td><td>Create open play from existing booking (pending/confirmed); provide formatName.</td><td>Must</td></tr>
+        <tr><td>FR-OP-2</td><td>List open plays (filter venue, sport, date, status); get single.</td><td>Must</td></tr>
+        <tr><td>FR-OP-3</td><td>Join/leave open play (auth). Creator cannot leave if others remain.</td><td>Must</td></tr>
+        <tr><td>FR-OP-4</td><td>Confirmation is payment-priority: first to reach ≥50% paid wins; others → cancelled_conflict (100% refund). No auto-cancel at T-30.</td><td>Must</td></tr>
+        <tr><td>FR-OP-5</td><td>Scheduled job or GET process-confirmations for confirmation logic.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>7. Matches and Scoring</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-MATCH-1</td><td>Create match from booking or tournament; optional fixtureId.</td><td>Must</td></tr>
+        <tr><td>FR-MATCH-3</td><td>Update scores by scoreType: simple, cricket, tennis, padel, pickleball_rally, pickleball_service.</td><td>Must</td></tr>
+        <tr><td>FR-MATCH-4</td><td>Complete match: aggregate player stats; update fixture if tournament.</td><td>Must</td></tr>
+        <tr><td>FR-MATCH-6</td><td>Real-time scoring: Socket.io room match:&lt;matchId&gt;; match:score, match:status.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>8. Tournaments</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-TOUR-1</td><td>Create tournament: name, sport, format (knockout, round_robin, etc.), venue or location, maxTeams.</td><td>Must</td></tr>
+        <tr><td>FR-TOUR-2</td><td>Register teams: PUT teams with { name, players[] }.</td><td>Must</td></tr>
+        <tr><td>FR-TOUR-3</td><td>Generate fixtures: POST generate-fixtures; knockout requires power of 2.</td><td>Must</td></tr>
+        <tr><td>FR-TOUR-9</td><td>Standings API: format-specific (points table, bracket, group standings).</td><td>Must</td></tr>
+        <tr><td>FR-TOUR-10</td><td>Tournament discoverability: browse, search, status filters.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>9. Batches and Trainer Mode</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-BATCH-1</td><td>CRUD batches; sportFees, feeSchedules; commissionPercent for platform.</td><td>Must</td></tr>
+        <tr><td>FR-BATCH-3</td><td>Batch booking discount when venue matches batch.venue.</td><td>Must</td></tr>
+        <tr><td>FR-BATCH-5</td><td>Record batch fee payment; compute commission and trainer net.</td><td>Must</td></tr>
+        <tr><td>FR-BATCH-6</td><td>Discovery: GET /api/batches/discover; join batch.</td><td>Must</td></tr>
+        <tr><td>FR-BATCH-6a</td><td>Trainer review only after ≥1 month in batch (PlayerBatchReview must exist).</td><td>Must</td></tr>
+        <tr><td>FR-BATCH-7</td><td>Monthly player review by trainer; sport + cognitive parameters.</td><td>Must</td></tr>
+        <tr><td>FR-REPORT-1/2/3</td><td>Monthly venue, trainer, platform reports.</td><td>Must</td></tr>
+        <tr><td>FR-TRAINER-1–8</td><td>Dashboard, profile, sessions, attendance, announcements, settlement.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>10. Player Stats and Leaderboard</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+        <tr><td>FR-STATS-1</td><td>Per-sport stat fields; match completion aggregates into PlayerStats.</td><td>Must</td></tr>
+        <tr><td>FR-STATS-2</td><td>Get player stats (by playerId, optional sport).</td><td>Must</td></tr>
+        <tr><td>FR-STATS-3</td><td>Leaderboard by sport (top N).</td><td>Must</td></tr>
+        <tr><td>FR-STATS-5</td><td>GET /api/stats/me/reviews for monthly batch progress.</td><td>Must</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>11. API Summary</h2>
+      <table>
+        <tr><th>Module</th><th>Methods</th><th>Endpoints (key)</th></tr>
+        <tr><td>Auth</td><td>POST</td><td>/api/auth/register, /api/auth/login</td></tr>
+        <tr><td>Sports</td><td>GET, POST, PUT</td><td>/api/sports, /api/sports/:id</td></tr>
+        <tr><td>Venues</td><td>GET, POST, PUT, DELETE</td><td>/api/venues, /api/venues/:id, /api/venues/:id/reviews</td></tr>
+        <tr><td>Bookings</td><td>GET, POST, PUT</td><td>/api/bookings, /api/bookings/multi, /api/bookings/:id, /api/bookings/:id/refunds, /api/bookings/:id/add-ons, /api/bookings/estimate, /api/bookings/check-availability</td></tr>
+        <tr><td>Payments</td><td>GET, POST</td><td>/api/payments/booking/:bookingId, /api/payments/refunds, /api/payments/create-order, /api/payments/verify</td></tr>
+        <tr><td>Open plays</td><td>GET, POST, PATCH, DELETE</td><td>/api/open-plays, /api/open-plays/:id, /api/open-plays/:id/join, /api/open-plays/process-confirmations</td></tr>
+        <tr><td>Matches</td><td>GET, POST, PUT</td><td>/api/matches, /api/matches/:id, /api/matches/:id/start, /api/matches/:id/scores, /api/matches/:id/complete</td></tr>
+        <tr><td>Tournaments</td><td>GET, POST, PUT</td><td>/api/tournaments, /api/tournaments/:id/teams, /api/tournaments/:id/generate-fixtures, /api/tournaments/:id/fixtures, /api/tournaments/:id/standings</td></tr>
+        <tr><td>Batches</td><td>GET, POST, PUT, DELETE</td><td>/api/batches, /api/batches/discover, /api/batches/:id/join, /api/batches/:id/payments</td></tr>
+        <tr><td>Trainers</td><td>GET, PATCH</td><td>/api/trainers/me/dashboard, /api/trainers/me/profile, /api/trainers/me/settlement</td></tr>
+        <tr><td>Stats</td><td>GET</td><td>/api/stats/player/:playerId, /api/stats/me, /api/stats/me/reviews, /api/stats/leaderboard</td></tr>
+        <tr><td>Reports</td><td>GET</td><td>/api/reports/venues/:venueId/monthly, /api/reports/trainers/me/monthly, /api/reports/platform/monthly</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>12. Application Screens</h2>
+      <p>40+ screens in <code>apps/web/src/</code>; routes: /login, /register, /app (tabs). Role-specific: Trainer Mode (6 screens); Venue Owner (5 screens).</p>
+      <table>
+        <tr><th>Screen</th><th>Module</th><th>Purpose</th><th>Status</th></tr>
+        <tr><td>Login</td><td>Auth</td><td>Auth0 (Google SSO, Email OTP, Magic Link)</td><td>Designed</td></tr>
+        <tr><td>Register</td><td>Auth</td><td>Auth0 sign-up</td><td>Designed</td></tr>
+        <tr><td>Home tab</td><td>Home</td><td>Discovery, next game, featured venues</td><td>Designed</td></tr>
+        <tr><td>Venue List / Detail</td><td>Booking</td><td>Search, facility selection, reviews</td><td>Designed</td></tr>
+        <tr><td>Time Slot → Summary → Payment</td><td>Booking</td><td>Slot grid, price, Pay Now</td><td>Designed</td></tr>
+        <tr><td>Confirmation</td><td>Booking</td><td>Success, Create Open Play, View Booking</td><td>Designed</td></tr>
+        <tr><td>Bookings tab, Booking Detail</td><td>Bookings</td><td>Upcoming/Completed, Cancel, Modify</td><td>Designed</td></tr>
+        <tr><td>Open Play tab, Detail, Create</td><td>Open Play</td><td>Discover, Join, Host</td><td>Designed</td></tr>
+        <tr><td>Stats overview, Leaderboard</td><td>Stats</td><td>Sport filter, performance, match history</td><td>Designed</td></tr>
+        <tr><td>Match list, Live Match</td><td>Matches</td><td>In-game scoring (simple, cricket, tennis)</td><td>Designed</td></tr>
+        <tr><td>Trainer List, Detail, Reviews</td><td>Discovery</td><td>Sport/city filters, ratings</td><td>Designed</td></tr>
+        <tr><td>Create Tournament, Tournament Detail</td><td>Tournaments</td><td>Multi-step flow, format tabs</td><td>Designed</td></tr>
+        <tr><td>Trainer Dashboard, Batches, Sessions</td><td>Trainer Mode</td><td>6 screens wired to backend</td><td>Designed</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>13. Data Model and Payment Reference</h2>
+      <ul>
+        <li><a href="data-model.html">Data Model</a> — entity and field definitions</li>
+        <li><a href="payment-gateway-architecture.html">Payment Gateway</a> — Razorpay, UPI, Card, Net Banking</li>
+        <li>Venue Owner &amp; Trainer views: <code>docs/VENUE_OWNER_AND_TRAINER_VIEWS.md</code></li>
+        <li>Multi-stage tournaments: <code>docs/TOURNAMENT_STAGES.md</code></li>
+        <li>Sponsor monetization: <code>docs/SPONSOR_MONETIZATION_MODULE.md</code></li>
+        <li><a href="traceability.html">Traceability</a> — document index and matrix</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>14. Traceability</h2>
+      <ul>
+        <li><strong>BRD → FRD:</strong> BRD capabilities (§4) map to FRD modules (Booking → §5, Open play → §6, etc.). See <a href="traceability.html">TRACEABILITY.md</a>.</li>
+        <li><strong>FRD → TSD / Implementation:</strong> FR-* requirements implemented in <code>apps/api/src</code> routes, Prisma schema, services; <code>apps/web/src</code> for UI. DATA_MODEL.md is schema source of truth.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
+

@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Semantic colour tokens (light mode) ──────────────────── */
+@layer base {
+  :root {
+    /* bottom nav total height (role strip ~22px + tab row ~60px + borders ~2px) */
+    --bottom-nav-h: 88px;
+
+    --color-surface:           255 255 255;
+    --color-surface-secondary: 248 250 252;
+    --color-surface-tertiary:  241 245 249;
+    --color-surface-elevated:  255 255 255;
+
+    --color-text-primary:   15 23 42;
+    --color-text-secondary: 71 85 105;
+    --color-text-tertiary:  148 163 184;
+    --color-text-inverse:   255 255 255;
+    --color-text-link:      37 99 235;
+
+    --color-border:       226 232 240;
+    --color-border-light: 241 245 249;
+    --color-border-focus: 59 130 246;
+  }
+
+  /* ─── Dark mode overrides ─────────────────────────────────── */
+  .dark {
+    --color-surface:           15 23 42;
+    --color-surface-secondary: 30 41 59;
+    --color-surface-tertiary:  51 65 85;
+    --color-surface-elevated:  30 41 59;
+
+    --color-text-primary:   248 250 252;
+    --color-text-secondary: 148 163 184;
+    --color-text-tertiary:  100 116 139;
+    --color-text-inverse:   15 23 42;
+    --color-text-link:      96 165 250;
+
+    --color-border:       51 65 85;
+    --color-border-light: 30 41 59;
+    --color-border-focus: 59 130 246;
+  }
+
+  body {
+    @apply font-sans bg-surface-secondary text-text-primary;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

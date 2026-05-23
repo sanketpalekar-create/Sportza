@@ -1,0 +1,957 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── Location ────────────────────────────────────────────────
+
+model Location {
+  id      Int     @id @default(autoincrement())
+  country String  @default("India") @db.VarChar(100)
+  state   String  @db.VarChar(100)
+  city    String  @db.VarChar(100)
+  pincode String? @db.VarChar(10)
+  address String? @db.VarChar(500)
+  lat     Float?
+  lng     Float?
+
+  users       User[]
+  venues      Venue[]
+  matches     Match[]
+  tournaments Tournament[]
+  batches     Batch[]
+
+  @@index([country, state, city])
+  @@index([pincode])
+  @@map("locations")
+}
+
+// ─── Identity ───────────────────────────────────────────────
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String?  @db.VarChar(255)
+  email       String   @unique @db.VarChar(255)
+  password    String?  @db.VarChar(255)
+  phone       String?  @unique @db.VarChar(20)
+  googleId    String?  @unique @db.VarChar(255)
+  facebookId  String?  @unique @db.VarChar(255)
+  avatar      String?  @db.VarChar(500)
+  role        String   @default("player") @db.VarChar(20)
+  locationId  Int?
+  sports      Json?
+  createdAt   DateTime @default(now())
+
+  location    Location? @relation(fields: [locationId], references: [id])
+
+  ownedVenues        Venue[]
+  bookings           Booking[]
+  trainerBatches     Batch[]               @relation("TrainerBatches")
+  trainerProfile     TrainerProfile?
+  trainerVenues      TrainerVenue[]
+  batchMemberships   BatchMembership[]
+  batchPaymentsPayer BatchPayment[]        @relation("PayerPayments")
+  batchPaymentsFor   BatchPayment[]        @relation("PlayerPayments")
+  venueReviews       VenueReview[]
+  trainerReviewsBy   TrainerReview[]       @relation("ReviewAuthor")
+  trainerReviewsFor  TrainerReview[]       @relation("ReviewSubject")
+  batchReviewsFor    PlayerBatchReview[]   @relation("ReviewedPlayer")
+  batchReviewsBy     PlayerBatchReview[]   @relation("ReviewingTrainer")
+  createdOpenPlays   OpenPlay[]
+  openPlayPlayers    OpenPlayPlayer[]
+  matchEvents        MatchEvent[]
+  matchConfirms      MatchConfirmation[]
+  playerStats        PlayerStats[]
+  playerActStats     PlayerActivityStats[]
+  participations     Participation[]
+  sportEvents        SportEvent[]
+  sessAttendance     SessionAttendance[]
+  createdMatches     Match[]               @relation("MatchCreator")
+  createdTournaments Tournament[]
+  createdActivities  Activity[]            @relation("ActivityCreator")
+  actParticipant     ActivityParticipant[]
+  refunds            Refund[]
+  bookingPayments    BookingPayment[]
+  batchAnnouncements BatchAnnouncement[]
+  splitPayments      SplitPayment[]
+
+  @@map("users")
+}
+
+model Otp {
+  id        Int      @id @default(autoincrement())
+  email     String?  @db.VarChar(255)
+  phone     String?  @db.VarChar(20)
+  code      String   @db.VarChar(10)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([phone])
+  @@map("otps")
+}
+
+model TrainerProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  bio             String   @default("") @db.Text
+  yearsExperience Int      @default(0)
+  sports          Json?
+  certifications  Json?
+  achievements    Json?
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("trainer_profiles")
+}
+
+model TrainerVenue {
+  id       Int @id @default(autoincrement())
+  userId   Int
+  venueId  Int
+
+  user  User  @relation(fields: [userId], references: [id])
+  venue Venue @relation(fields: [venueId], references: [id])
+
+  @@unique([userId, venueId])
+  @@map("trainer_venues")
+}
+
+// ─── Infrastructure ─────────────────────────────────────────
+
+model Sport {
+  id                   Int      @id @default(autoincrement())
+  name                 String   @unique @db.VarChar(50)
+  displayName          String   @db.VarChar(100)
+  defaultPricePerHour  Float?
+  defaultRates         Json?
+  defaultMinBookingHrs Float?
+  statFields           Json?
+  rulebookTitle        String?  @db.VarChar(150)
+  rulebookLines        Json?
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  formats  SportFormat[]
+  matches  Match[]
+
+  @@map("sports")
+}
+
+model SportFormat {
+  id            Int    @id @default(autoincrement())
+  sportId       Int
+  name          String @db.VarChar(100)
+  playersPerTeam Int
+  minTeams      Int    @default(2)
+  maxTeams      Int    @default(2)
+  description   String? @db.VarChar(500)
+  config        Json?
+
+  sport Sport @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@map("sport_formats")
+}
+
+model Venue {
+  id                Int      @id @default(autoincrement())
+  name              String   @db.VarChar(255)
+  ownerId           Int
+  sports            Json?
+  gstRate           Float    @default(18)
+  commissionPercent Float    @default(0)
+  locationId        Int?
+  facilities        Json?
+  capacity          Int
+  pricePerHour      Float?
+  images            Json?
+  availability      Json?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  location       Location?        @relation(fields: [locationId], references: [id])
+  owner          User             @relation(fields: [ownerId], references: [id])
+  sportFacilities SportFacility[]
+  sportRates     SportRate[]
+  addOns         VenueAddOn[]
+  bookings       Booking[]
+  openPlays      OpenPlay[]
+  matches        Match[]
+  batches        Batch[]
+  tournaments    Tournament[]
+  venueReviews   VenueReview[]
+  trainerVenues  TrainerVenue[]
+  pricingRules   FacilityPricingRule[]
+  dbFacilities   Facility[]
+  slots          Slot[]
+  activities     Activity[]
+  displays       VenueDisplay[]
+
+  @@map("venues")
+}
+
+model SportFacility {
+  id          Int    @id @default(autoincrement())
+  venueId     Int
+  name        String @db.VarChar(255)
+  surfaceType String? @db.VarChar(100)
+  count       Int    @default(1)
+  sports      Json?
+
+  venue        Venue                 @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  pricingRules FacilityPricingRule[]
+
+  @@map("sport_facilities")
+}
+
+model SportRate {
+  id              Int    @id @default(autoincrement())
+  venueId         Int
+  sport           String @db.VarChar(50)
+  minBookingHours Float?
+  rates           Json?
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@map("sport_rates")
+}
+
+model VenueAddOn {
+  id          Int    @id @default(autoincrement())
+  venueId     Int
+  name        String @db.VarChar(255)
+  category    String @default("other") @db.VarChar(20)
+  price       Float
+  unit        String @default("per_item") @db.VarChar(20)
+  sport       String? @db.VarChar(50)
+  description String? @db.VarChar(500)
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@map("venue_add_ons")
+}
+
+model Facility {
+  id          Int      @id @default(autoincrement())
+  venueId     Int
+  name        String   @db.VarChar(255)
+  surfaceType String?  @db.VarChar(100)
+  sports      Json?
+  count       Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  venue Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  slots Slot[]
+
+  @@index([venueId])
+  @@map("facilities")
+}
+
+model Slot {
+  id         Int      @id @default(autoincrement())
+  facilityId Int
+  venueId    Int
+  startTime  DateTime
+  endTime    DateTime
+  price      Float
+  status     String   @default("available") @db.VarChar(20)
+  bookingId  Int?
+  createdAt  DateTime @default(now())
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  venue    Venue    @relation(fields: [venueId], references: [id])
+  booking  Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([facilityId, startTime, endTime])
+  @@index([venueId, startTime, endTime])
+  @@index([status, startTime])
+  @@map("slots")
+}
+
+// ─── Pricing Rules ─────────────────────────────────────────
+
+model FacilityPricingRule {
+  id         Int      @id @default(autoincrement())
+  facilityId Int
+  venueId    Int
+  ruleType   String   @db.VarChar(50)
+  ruleValue  Float    @default(0)
+  metadata   Json?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  facility SportFacility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  venue    Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, isActive])
+  @@index([venueId])
+  @@map("facility_pricing_rules")
+}
+
+// ─── Reviews ────────────────────────────────────────────────
+
+model VenueReview {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  venueId   Int
+  rating    Int
+  review    String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id])
+  venue Venue @relation(fields: [venueId], references: [id])
+
+  @@unique([venueId, userId])
+  @@index([venueId])
+  @@map("venue_reviews")
+}
+
+model TrainerReview {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  trainerId Int
+  rating    Int
+  review    String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User @relation("ReviewAuthor", fields: [userId], references: [id])
+  trainer User @relation("ReviewSubject", fields: [trainerId], references: [id])
+
+  @@unique([trainerId, userId])
+  @@index([trainerId])
+  @@map("trainer_reviews")
+}
+
+// ─── Marketplace ────────────────────────────────────────────
+
+model Booking {
+  id                        Int      @id @default(autoincrement())
+  userId                    Int
+  createdById               Int?
+  bookingType               String   @default("solo") @db.VarChar(20)
+  venueId                   Int
+  sport                     String   @db.VarChar(50)
+  facilityId                Int
+  facilityName              String   @db.VarChar(255)
+  facilitySurfaceType       String?  @db.VarChar(100)
+  bookingDate               DateTime @db.Date
+  startTime                 String   @db.VarChar(10)
+  endTime                   String   @db.VarChar(10)
+  totalHours                Float
+  subtotal                  Float
+  gstRate                   Float    @default(18)
+  gstAmount                 Float    @default(0)
+  totalAmount               Float
+  platformCommissionPercent Float    @default(0)
+  platformCommissionAmount  Float    @default(0)
+  venueNetAmount            Float    @default(0)
+  paymentType               String   @default("full") @db.VarChar(10)
+  paidAmount                Float    @default(0)
+  paymentStatus             String   @default("pending") @db.VarChar(20)
+  paymentId                 String?  @db.VarChar(255)
+  razorpayOrderId           String?  @db.VarChar(255)
+  razorpayPaymentId         String?  @db.VarChar(255)
+  status                    String   @default("pending") @db.VarChar(30)
+  slotId                    Int?
+  batchId                   Int?
+  discountPercent           Float    @default(0)
+  splitCount                Int?
+  groupId                   String?  @db.VarChar(50)
+  createdAt                 DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id])
+  venue         Venue          @relation(fields: [venueId], references: [id])
+  batch         Batch?         @relation(fields: [batchId], references: [id])
+  splitPayments SplitPayment[]
+  addOnPurchases BookingAddOn[]
+  openPlay      OpenPlay?
+  matches       Match[]
+  slots         Slot[]
+  payments      BookingPayment[]
+  refunds       Refund[]
+  activities    Activity[]
+
+  @@index([venueId, facilityId, bookingDate, startTime, endTime, status])
+  @@index([status, bookingDate])
+  @@index([groupId])
+  @@map("bookings")
+}
+
+model SplitPayment {
+  id               Int      @id @default(autoincrement())
+  bookingId        Int
+  userId           Int
+  amount           Float
+  status           String   @default("pending") @db.VarChar(20)
+  razorpayOrderId  String?  @db.VarChar(255)
+  razorpayPaymentId String? @db.VarChar(255)
+  createdAt        DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([bookingId, userId])
+  @@index([bookingId, status])
+  @@map("split_payments")
+}
+
+model BookingAddOn {
+  id          Int    @id @default(autoincrement())
+  bookingId   Int
+  name        String @db.VarChar(255)
+  category    String? @db.VarChar(20)
+  price       Float
+  unit        String? @db.VarChar(20)
+  quantity    Int    @default(1)
+  amount      Float
+  purchasedBy Int
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_add_ons")
+}
+
+model BookingPayment {
+  id               Int      @id @default(autoincrement())
+  bookingId        Int
+  userId           Int
+  amount           Float
+  paymentMethod    String   @default("online") @db.VarChar(20)
+  paymentGatewayId String?  @db.VarChar(255)
+  razorpayOrderId  String?  @db.VarChar(255)
+  status           String   @default("pending") @db.VarChar(20)
+  splitIndex       Int?
+  createdAt        DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([bookingId, userId])
+  @@index([bookingId, status])
+  @@map("booking_payments")
+}
+
+model Refund {
+  id                Int      @id @default(autoincrement())
+  bookingId         Int
+  paymentId         Int?
+  userId            Int
+  splitIndex        Int?
+  amountPaid        Float
+  amountRefunded    Float
+  platformFee       Float    @default(0)
+  reason            String   @db.VarChar(20)
+  razorpayPaymentId String   @db.VarChar(255)
+  razorpayRefundId  String?  @db.VarChar(255)
+  status            String   @default("pending") @db.VarChar(20)
+  failureReason     String?  @db.VarChar(500)
+  createdAt         DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([bookingId])
+  @@index([userId])
+  @@map("refunds")
+}
+
+// ─── Open Play ──────────────────────────────────────────────
+
+model OpenPlay {
+  id             Int      @id @default(autoincrement())
+  bookingId      Int      @unique
+  venueId        Int
+  sport          String   @db.VarChar(50)
+  formatName     String   @db.VarChar(100)
+  playersPerTeam Int
+  maxPlayers     Int
+  createdById    Int
+  facilityId     Int?
+  facilityName   String?  @db.VarChar(255)
+  title          String?  @db.VarChar(255)
+  status         String   @default("open") @db.VarChar(20)
+  bookingDate    DateTime @db.Date
+  startTime      String?  @db.VarChar(10)
+  endTime        String?  @db.VarChar(10)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  booking   Booking          @relation(fields: [bookingId], references: [id])
+  venue     Venue            @relation(fields: [venueId], references: [id])
+  createdBy User             @relation(fields: [createdById], references: [id])
+  players   OpenPlayPlayer[]
+
+  @@index([venueId, bookingDate, status])
+  @@index([sport, status])
+  @@index([createdById])
+  @@map("open_plays")
+}
+
+model OpenPlayPlayer {
+  id         Int @id @default(autoincrement())
+  openPlayId Int
+  userId     Int
+
+  openPlay OpenPlay @relation(fields: [openPlayId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([openPlayId, userId])
+  @@map("open_play_players")
+}
+
+// ─── Matches ────────────────────────────────────────────────
+
+model Match {
+  id             Int      @id @default(autoincrement())
+  activityId     Int?
+  bookingId      Int?
+  tournamentId   Int?
+  sportId        Int
+  sportName      String   @db.VarChar(50)
+  formatName     String   @db.VarChar(100)
+  playersPerTeam Int?
+  venueId        Int?
+  locationId     Int?
+  matchType      String   @default("COMPETITIVE") @db.VarChar(20)
+  loggingMode    String   @default("QUICK_RESULT") @db.VarChar(20)
+  teams          Json?
+  winnerTeam     String?  @db.VarChar(10)
+  matchDate      DateTime
+  scores         Json?
+  scoreType      String   @default("simple") @db.VarChar(30)
+  status         String   @default("scheduled") @db.VarChar(30)
+  playerStats    Json?
+  createdById    Int?
+  statsProcessed Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  location      Location?           @relation(fields: [locationId], references: [id])
+  booking       Booking?            @relation(fields: [bookingId], references: [id])
+  tournament    Tournament?         @relation(fields: [tournamentId], references: [id])
+  sport         Sport               @relation(fields: [sportId], references: [id])
+  venue         Venue?              @relation(fields: [venueId], references: [id])
+  createdBy     User?               @relation("MatchCreator", fields: [createdById], references: [id])
+  events        MatchEvent[]
+  confirmations MatchConfirmation[]
+  fixtures      TournamentFixture[]
+  displays      VenueDisplay[]
+  pairings      DisplayPairing[]
+
+  @@index([sportId])
+  @@index([sportName])
+  @@index([status])
+  @@index([matchDate])
+  @@index([venueId])
+  @@index([tournamentId])
+  @@index([bookingId])
+  @@index([createdById])
+  @@map("matches")
+}
+
+model MatchEvent {
+  id             Int      @id @default(autoincrement())
+  matchId        Int
+  team           String   @db.VarChar(10)
+  playerId       Int?
+  eventType      String   @db.VarChar(50)
+  eventValue     Int      @default(1)
+  eventTimestamp  DateTime @default(now())
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  match  Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player User? @relation(fields: [playerId], references: [id])
+
+  @@index([matchId])
+  @@index([matchId, team])
+  @@index([matchId, playerId])
+  @@index([matchId, eventType])
+  @@map("match_events")
+}
+
+model MatchConfirmation {
+  id          Int       @id @default(autoincrement())
+  matchId     Int
+  playerId    Int
+  status      String    @default("PENDING") @db.VarChar(20)
+  respondedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  match  Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player User  @relation(fields: [playerId], references: [id])
+
+  @@unique([matchId, playerId])
+  @@index([matchId])
+  @@index([playerId, status])
+  @@map("match_confirmations")
+}
+
+// ─── Tournaments ────────────────────────────────────────────
+
+model Tournament {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  sport           String   @db.VarChar(50)
+  format          String   @default("league") @db.VarChar(20)
+  stages          Json?
+  matchFormatName String?  @db.VarChar(100)
+  venueId         Int?
+  locationId      Int?
+  createdById     Int
+  maxTeams        Int?
+  teams           Json?
+  status          String   @default("draft") @db.VarChar(20)
+  winner          Json?
+  runnerUp        Json?
+  startDate       DateTime? @db.Date
+  endDate         DateTime? @db.Date
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  location  Location?           @relation(fields: [locationId], references: [id])
+  venue     Venue?              @relation(fields: [venueId], references: [id])
+  createdBy User                @relation(fields: [createdById], references: [id])
+  fixtures  TournamentFixture[]
+  matches   Match[]
+
+  @@index([sport, status])
+  @@index([createdById])
+  @@index([venueId])
+  @@map("tournaments")
+}
+
+model TournamentFixture {
+  id           Int      @id @default(autoincrement())
+  tournamentId Int
+  stage        Int?
+  round        Int
+  groupIndex   Int?
+  matchOrder   Int
+  team1Type    String   @default("team") @db.VarChar(10)
+  team1Ref     Json
+  team2Type    String   @default("team") @db.VarChar(10)
+  team2Ref     Json
+  matchId      Int?
+  status       String   @default("pending") @db.VarChar(20)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  match      Match?     @relation(fields: [matchId], references: [id])
+
+  @@unique([tournamentId, stage, round, matchOrder, groupIndex])
+  @@index([tournamentId])
+  @@index([tournamentId, stage])
+  @@map("tournament_fixtures")
+}
+
+// ─── Training ───────────────────────────────────────────────
+
+model Batch {
+  id                  Int      @id @default(autoincrement())
+  trainerId           Int
+  name                String   @db.VarChar(255)
+  description         String?  @db.Text
+  locationId          Int?
+  venueId             Int?
+  venueDiscountPct    Float    @default(0)
+  commissionPercent   Float    @default(0)
+  sport               String?  @db.VarChar(50)
+  sportFees           Json?
+  feeSchedules        Json?
+  capacity            Int      @default(20)
+  joinType            String   @default("instant") @db.VarChar(20)
+  reservationPercent  Float    @default(100)
+  schedule            Json?
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  trainer       User              @relation("TrainerBatches", fields: [trainerId], references: [id])
+  location      Location?         @relation(fields: [locationId], references: [id])
+  venue         Venue?            @relation(fields: [venueId], references: [id])
+  memberships   BatchMembership[]
+  sessions      BatchSession[]
+  payments      BatchPayment[]
+  announcements BatchAnnouncement[]
+  reviews       PlayerBatchReview[]
+  bookings      Booking[]
+
+  @@index([trainerId])
+  @@index([venueId])
+  @@map("batches")
+}
+
+model BatchMembership {
+  id                Int      @id @default(autoincrement())
+  batchId           Int
+  playerId          Int
+  joinDate          DateTime @default(now())
+  status            String   @default("active") @db.VarChar(20)
+  reservationStatus String   @default("confirmed") @db.VarChar(20)
+  paymentStatus     String   @default("pending") @db.VarChar(20)
+  createdAt         DateTime @default(now())
+
+  batch  Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  player User  @relation(fields: [playerId], references: [id])
+
+  @@unique([batchId, playerId])
+  @@index([playerId])
+  @@index([batchId, status])
+  @@map("batch_memberships")
+}
+
+model BatchSession {
+  id        Int      @id @default(autoincrement())
+  batchId   Int
+  date      DateTime @db.Date
+  startTime String   @db.VarChar(10)
+  endTime   String   @db.VarChar(10)
+  status    String   @default("scheduled") @db.VarChar(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batch      Batch               @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  attendance SessionAttendance[]
+
+  @@index([batchId, date])
+  @@index([batchId, status])
+  @@map("batch_sessions")
+}
+
+model SessionAttendance {
+  id        Int      @id @default(autoincrement())
+  sessionId Int
+  playerId  Int
+  status    String   @default("present") @db.VarChar(10)
+  createdAt DateTime @default(now())
+
+  session BatchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player  User         @relation(fields: [playerId], references: [id])
+
+  @@unique([sessionId, playerId])
+  @@index([playerId])
+  @@map("session_attendance")
+}
+
+model BatchPayment {
+  id                        Int      @id @default(autoincrement())
+  batchId                   Int
+  playerId                  Int?
+  payerId                   Int
+  cycleMonth                Int?
+  cycleYear                 Int?
+  paymentMode               String   @default("online") @db.VarChar(10)
+  validationStatus          String   @default("pending") @db.VarChar(20)
+  amount                    Float
+  platformCommissionPercent Float    @default(0)
+  platformCommissionAmount  Float    @default(0)
+  trainerNetAmount          Float    @default(0)
+  status                    String   @default("completed") @db.VarChar(20)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  batch  Batch @relation(fields: [batchId], references: [id])
+  player User? @relation("PlayerPayments", fields: [playerId], references: [id])
+  payer  User  @relation("PayerPayments", fields: [payerId], references: [id])
+
+  @@index([batchId, playerId, cycleMonth, cycleYear])
+  @@map("batch_payments")
+}
+
+model BatchAnnouncement {
+  id        Int      @id @default(autoincrement())
+  batchId   Int
+  trainerId Int
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainer User  @relation(fields: [trainerId], references: [id])
+
+  @@index([batchId, createdAt])
+  @@map("batch_announcements")
+}
+
+model PlayerBatchReview {
+  id        Int      @id @default(autoincrement())
+  batchId   Int
+  playerId  Int
+  trainerId Int
+  year      Int
+  month     Int
+  ratings   Json?
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batch   Batch @relation(fields: [batchId], references: [id])
+  player  User  @relation("ReviewedPlayer", fields: [playerId], references: [id])
+  trainer User  @relation("ReviewingTrainer", fields: [trainerId], references: [id])
+
+  @@unique([batchId, playerId, year, month])
+  @@index([playerId, year, month])
+  @@map("player_batch_reviews")
+}
+
+// ─── Stats / Analytics ──────────────────────────────────────
+
+model Activity {
+  id          Int      @id @default(autoincrement())
+  type        String   @db.VarChar(30)
+  sport       String   @db.VarChar(50)
+  referenceId Int?
+  venueId     Int?
+  facilityId  Int?
+  bookingId   Int?
+  createdById Int?
+  startTime   DateTime?
+  endTime     DateTime?
+  status      String   @default("scheduled") @db.VarChar(20)
+  date        DateTime?
+  createdAt   DateTime @default(now())
+
+  venue         Venue?               @relation(fields: [venueId], references: [id])
+  booking       Booking?             @relation(fields: [bookingId], references: [id])
+  createdBy     User?                @relation("ActivityCreator", fields: [createdById], references: [id])
+  participants  ActivityParticipant[]
+  activityStats PlayerActivityStats[]
+  sportEvents   SportEvent[]
+  participations Participation[]
+
+  @@index([type, referenceId])
+  @@index([sport, startTime])
+  @@index([venueId, startTime])
+  @@index([bookingId])
+  @@map("activities")
+}
+
+model ActivityParticipant {
+  id         Int @id @default(autoincrement())
+  activityId Int
+  userId     Int
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([activityId, userId])
+  @@map("activity_participants")
+}
+
+model Participation {
+  id         Int      @id @default(autoincrement())
+  activityId Int
+  userId     Int
+  role       String   @default("player") @db.VarChar(20)
+  teamId     String?  @db.VarChar(50)
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([activityId, userId])
+  @@map("participations")
+}
+
+model SportEvent {
+  id         Int      @id @default(autoincrement())
+  activityId Int
+  playerId   Int
+  eventType  String   @db.VarChar(50)
+  value      Json?
+  timestamp  DateTime @default(now())
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  player   User     @relation(fields: [playerId], references: [id])
+
+  @@index([activityId, timestamp])
+  @@index([playerId, timestamp])
+  @@index([activityId, eventType])
+  @@map("sport_events")
+}
+
+model PlayerActivityStats {
+  id         Int      @id @default(autoincrement())
+  activityId Int
+  playerId   Int
+  sport      String   @db.VarChar(50)
+  stats      Json?
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  player   User     @relation(fields: [playerId], references: [id])
+
+  @@unique([activityId, playerId])
+  @@index([playerId, sport])
+  @@index([sport])
+  @@map("player_activity_stats")
+}
+
+model PlayerStats {
+  id            Int      @id @default(autoincrement())
+  playerId      Int
+  sport         String   @db.VarChar(50)
+  totalMatches  Int      @default(0)
+  matchesWon    Int      @default(0)
+  matchesLost   Int      @default(0)
+  stats         Json?
+  winPercentage Float    @default(0)
+  lastUpdated   DateTime @default(now())
+
+  player User @relation(fields: [playerId], references: [id])
+
+  @@unique([playerId, sport])
+  @@map("player_stats")
+}
+
+// ─── Display / Scoreboard ───────────────────────────────
+
+model VenueDisplay {
+  id             Int       @id @default(autoincrement())
+  venueId        Int
+  courtName      String    @db.VarChar(100)
+  status         String    @default("idle") @db.VarChar(20)
+  currentMatchId Int?
+  lastPingAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  venue    Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  match    Match?           @relation(fields: [currentMatchId], references: [id])
+  pairings DisplayPairing[]
+
+  @@index([venueId])
+  @@map("venue_displays")
+}
+
+model DisplayPairing {
+  id        Int       @id @default(autoincrement())
+  displayId Int
+  token     String    @unique @db.VarChar(64)
+  matchId   Int?
+  claimedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  display VenueDisplay @relation(fields: [displayId], references: [id], onDelete: Cascade)
+  match   Match?       @relation(fields: [matchId], references: [id])
+
+  @@index([displayId])
+  @@map("display_pairings")
+}

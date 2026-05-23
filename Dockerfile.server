@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+COPY prisma/ ./prisma/
+
+ENV DATABASE_URL="mysql://placeholder:placeholder@localhost:3306/placeholder"
+RUN npm install
+
+COPY server/ ./server/
+
+EXPOSE 5000
+
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run server"]

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scoreboard Architecture — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; vertical-align: top; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; word-break: break-all; }
+    .mermaid-wrap { overflow-x: auto; margin: 1rem 0; padding: 1rem; background: #f8faf8; border-radius: 8px; border: 1px solid #dcfce7; }
+    .callout { background: #fefce8; border: 1px solid #fde047; border-radius: 8px; padding: 0.75rem 1rem; margin: 0.75rem 0; font-size: 0.95rem; color: #713f12; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'forest' });</script>
+</head>
+<body>
+  <header class="header">
+    <h1>Scoreboard Architecture</h1>
+    <p class="subtitle">Venue display · Socket.io · REST bootstrap · No auth on display URL</p>
+    <p class="version">v1.0 — Last updated Mar 2026</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI/UX Summary</a>
+    <a href="booking-state-and-flows.html">Booking State &amp; Flows</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+
+    <section class="section">
+      <h2>1. Purpose</h2>
+      <p>This document describes how a <strong>venue screen</strong> (smart TV, Fire Stick browser, kiosk PC) shows a <strong>live match scoreboard</strong> that updates in real time when a scorer uses the Sportza web app. The scoreboard page is intentionally <strong>not behind Auth0</strong>: anyone who can open the URL can subscribe to public match updates for that match id.</p>
+      <p><strong>Implementation references:</strong> API socket bootstrap <code>apps/api/src/lib/socket.ts</code>, HTTP server attachment <code>apps/api/src/index.ts</code>, match emits <code>apps/api/src/routes/matches.ts</code>, TV page <code>apps/web/src/pages/matches/Scoreboard.tsx</code>, client hook <code>apps/web/src/hooks/useMatchSocket.ts</code>.</p>
+    </section>
+
+    <section class="section">
+      <h2>2. System overview</h2>
+      <p>The <strong>match creator</strong> (authenticated in the app) sends score and event updates via <strong>REST</strong>. The API persists to <strong>MySQL</strong> and broadcasts to every Socket.io client in the <strong>match room</strong> <code>match:&lt;id&gt;</code>. The <strong>scoreboard page</strong> loads once over REST for initial teams and scores, then keeps the UI in sync via WebSocket events.</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+  subgraph scorerSide [Scorer device]
+    ScorerApp[Match app]
+  end
+  subgraph displaySide [Venue display]
+    TVPage[Scoreboard page]
+  end
+  API["API Express and SocketIO"]
+  DB[(MySQL)]
+  ScorerApp -->|"HTTPS REST"| API
+  TVPage -->|"HTTPS REST bootstrap"| API
+  TVPage -->|"SocketIO same host"| API
+  API --> DB
+        </div>
+      </div>
+      <ul>
+        <li><strong>Scorer app</strong> — Logged-in user; calls <code>PUT /api/matches/:id/score</code>, <code>POST /api/matches/:id/events</code>, <code>PUT /api/matches/:id/status</code>, etc.</li>
+        <li><strong>API server</strong> — Single process: Express REST + Socket.io on the same TCP port as HTTP (upgrade to WebSocket).</li>
+        <li><strong>Scoreboard page</strong> — Static SPA route <code>/scoreboard/:matchId</code>; first request loads HTML/JS from the web app origin; REST and socket URLs come from <code>VITE_API_URL</code> (socket base URL strips the <code>/api</code> suffix in the client hook).</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>3. Connection sequence</h2>
+      <p>Typical lifecycle from opening the TV browser until live updates appear.</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+  participant TV as TVBrowser
+  participant API as ApiServer
+  participant DB as MySQL
+  participant Phone as ScorerApp
+
+  TV->>API: GET /api/matches/id
+  API->>DB: read match
+  DB-->>API: row
+  API-->>TV: JSON teams scores status
+  TV->>API: SocketIO connect
+  TV->>API: emit match join id
+  API-->>TV: emit match joined
+
+  Phone->>API: PUT /api/matches/id/score
+  API->>DB: write scores
+  API-->>TV: emit match score
+
+  Phone->>API: POST /api/matches/id/events
+  API->>DB: write event
+  API-->>TV: emit match event
+        </div>
+      </div>
+      <p class="callout"><strong>Note:</strong> Status changes such as start or complete also emit <code>match:status</code> to the room so the badge on the scoreboard updates without polling.</p>
+    </section>
+
+    <section class="section">
+      <h2>4. Room model</h2>
+      <p>Socket.io <strong>rooms</strong> isolate broadcasts per match:</p>
+      <ul>
+        <li>Room name: <code>match:&lt;matchId&gt;</code> (numeric id as string).</li>
+        <li>After the WebSocket connects, the client emits <code>match:join</code> with the match id; the server joins the socket to that room.</li>
+        <li><strong>Multiple displays</strong> can join the same room (several TVs, or TV plus a laptop). All receive the same <code>match:score</code>, <code>match:event</code>, and <code>match:status</code> payloads.</li>
+        <li><strong>No authentication</strong> is required to connect or join: this is by design for kiosk-style displays. Treat the match id as a capability token; do not share the URL publicly if the match should stay private.</li>
+        <li>On disconnect or navigation away, the client emits <code>match:leave</code> and closes the socket.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>5. Socket event reference</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Direction</th>
+            <th>Payload</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>match:join</code></td>
+            <td>Client to server</td>
+            <td><code>matchId</code> number or string</td>
+          </tr>
+          <tr>
+            <td><code>match:joined</code></td>
+            <td>Server to client</td>
+            <td><code>matchId</code>, <code>room</code> string</td>
+          </tr>
+          <tr>
+            <td><code>match:score</code></td>
+            <td>Server to room</td>
+            <td><code>matchId</code>, <code>scores</code> object, <code>winnerTeam</code>, <code>status</code></td>
+          </tr>
+          <tr>
+            <td><code>match:event</code></td>
+            <td>Server to room</td>
+            <td><code>matchId</code>, <code>event</code> with <code>id</code>, <code>team</code>, <code>eventType</code>, <code>eventValue</code>, <code>playerName</code>, <code>eventTimestamp</code></td>
+          </tr>
+          <tr>
+            <td><code>match:status</code></td>
+            <td>Server to room</td>
+            <td><code>matchId</code>, <code>status</code> string</td>
+          </tr>
+          <tr>
+            <td><code>match:leave</code></td>
+            <td>Client to server</td>
+            <td><code>matchId</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>REST routes that trigger emits are defined in <code>apps/api/src/routes/matches.ts</code> (score update, add event, status update, start, complete).</p>
+    </section>
+
+    <section class="section">
+      <h2>6. Putting the scoreboard on a TV</h2>
+      <ol>
+        <li>Deploy or run the web app so it has a stable HTTPS URL (production) or HTTP URL (local demo).</li>
+        <li>In the app, open the match detail page and note the match id (or use the <strong>Scoreboard</strong> link which opens <code>/scoreboard/&lt;matchId&gt;</code> in a new tab).</li>
+        <li>On the TV or stick, open a browser and navigate to:<br><code>https://&lt;your-web-host&gt;/scoreboard/&lt;matchId&gt;</code></li>
+        <li>Ensure the TV can reach both the <strong>web origin</strong> (for the SPA) and the <strong>API host</strong> configured in <code>VITE_API_URL</code> (for REST and Socket.io). In dev, that is often <code>http://localhost:5000/api</code> for REST and <code>http://localhost:5000</code> for the socket; a TV on the same LAN must use the PC LAN IP instead of localhost.</li>
+        <li>Works in any modern browser on the TV or stick: Chrome, Firefox, Samsung Smart TV browser, Amazon Fire TV Silk, etc.</li>
+        <li>Use the browser or OS fullscreen mode (e.g. F11 on desktop, or the TV full-screen control) for a clean display.</li>
+        <li>The Socket.io client retries automatically if Wi-Fi drops (up to 10 attempts with backoff).</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>7. Transports: WebSocket and fallback</h2>
+      <p>Both server and client enable <code>websocket</code> and <code>polling</code>. Socket.io tries a WebSocket upgrade first; if a corporate firewall or proxy blocks WebSockets, it falls back to HTTP long-polling on the same origin without code changes on the scoreboard page.</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TB
+  Client[SocketIO client]
+  Client -->|preferred| WS[WebSocket transport]
+  Client -->|if WS blocked| Poll[HTTP long polling]
+  WS --> Server[SocketIO server]
+  Poll --> Server
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>8. CORS and production checklist</h2>
+      <ul>
+        <li>API CORS <code>CLIENT_ORIGIN</code> should list the web app origin. Socket.io uses the same CORS settings for the initial handshake.</li>
+        <li>If the scoreboard is opened from a file URL or another origin, verify browser console for CORS or mixed-content errors; align all URLs to HTTPS in production.</li>
+        <li>Future hardening options (not implemented in baseline): short-lived display tokens, venue-bound pairing codes, or signed URLs for the scoreboard route.</li>
+      </ul>
+    </section>
+
+  </main>
+</body>
+</html>

@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sportza Rating System — v3.0</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #273349;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --orange: #f97316;
+    --indigo: #6366f1;
+    --purple: #a855f7;
+    --slate: #64748b;
+    --blue: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ── layout ── */
+  .page { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* ── hero ── */
+  .hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 60%);
+    border: 1px solid #3730a3;
+    border-radius: 16px;
+    padding: 48px 40px;
+    margin-bottom: 48px;
+    text-align: center;
+  }
+  .hero h1 { font-size: 2.4rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
+  .hero .sub { color: var(--muted); font-size: 1rem; margin-bottom: 20px; }
+  .badge-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 14px; font-size: 0.8rem; color: var(--muted);
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+
+  /* ── section ── */
+  h2 {
+    font-size: 1.35rem; font-weight: 700; color: #fff;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 8px; margin: 48px 0 20px;
+  }
+  h3 { font-size: 1.05rem; font-weight: 600; color: var(--accent-light); margin: 28px 0 12px; }
+  p { color: var(--muted); margin-bottom: 12px; }
+  ul { color: var(--muted); padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent-light); text-decoration: none; }
+  strong { color: var(--text); }
+
+  /* ── tables ── */
+  .tbl-wrap { overflow-x: auto; margin-bottom: 20px; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--surface2); text-align: left;
+    padding: 10px 14px; font-size: 0.82rem; font-weight: 600;
+    color: var(--accent-light); text-transform: uppercase; letter-spacing: .05em;
+  }
+  tbody tr { border-top: 1px solid var(--border); }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 10px 14px; font-size: 0.9rem; color: var(--muted); vertical-align: top; }
+  td strong { color: var(--text); }
+  td.num { font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; }
+  td code, th code { background: #1a2035; padding: 1px 6px; border-radius: 4px; font-size: 0.82rem; color: #a5b4fc; }
+
+  /* ── code ── */
+  pre {
+    background: #111827; border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px 22px; overflow-x: auto; margin-bottom: 20px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.88rem;
+    color: #a5b4fc; line-height: 1.6;
+  }
+  code { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── callouts ── */
+  .callout {
+    border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+    border-left: 4px solid; font-size: 0.92rem;
+  }
+  .callout.blue { background: #0c1d3f; border-color: var(--blue); color: #93c5fd; }
+  .callout.green { background: #052e16; border-color: var(--green); color: #86efac; }
+  .callout.amber { background: #1c1408; border-color: var(--amber); color: #fcd34d; }
+  .callout.purple { background: #1a0d2e; border-color: var(--purple); color: #d8b4fe; }
+  .callout.red { background: #1f0909; border-color: var(--red); color: #fca5a5; }
+
+  /* ── confidence pills ── */
+  .pill {
+    display: inline-block; border-radius: 999px; padding: 2px 12px;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: .03em;
+  }
+
+  /* ── status chips ── */
+  .live {
+    display: inline-block; background: #052e16; color: #22c55e;
+    border: 1px solid #166534; border-radius: 6px; padding: 1px 8px;
+    font-size: 0.78rem; font-weight: 600;
+  }
+  .planned {
+    display: inline-block; background: #1c1408; color: #fbbf24;
+    border: 1px solid #92400e; border-radius: 6px; padding: 1px 8px;
+    font-size: 0.78rem; font-weight: 600;
+  }
+
+  /* ── formula highlight ── */
+  .formula {
+    background: #111827; border: 1px solid #3730a3;
+    border-radius: 10px; padding: 18px 22px; margin-bottom: 20px;
+    font-family: 'JetBrains Mono', monospace; color: #c7d2fe;
+    font-size: 0.9rem; line-height: 1.9;
+  }
+
+  /* ── factor card ── */
+  .factor-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px 24px; margin-bottom: 20px;
+  }
+  .factor-card .fnum {
+    display: inline-block; background: var(--accent); color: #fff;
+    border-radius: 6px; padding: 2px 10px; font-size: 0.78rem;
+    font-weight: 700; margin-bottom: 8px;
+  }
+  .factor-card h3 { margin: 4px 0 14px; color: #fff; }
+
+  /* ── worked example ── */
+  .example-box {
+    background: var(--surface); border: 1px solid #3730a3;
+    border-radius: 12px; padding: 24px 28px; margin-bottom: 28px;
+  }
+  .example-box h3 { color: #a5b4fc; margin-bottom: 16px; }
+
+  /* ── data model ── */
+  .schema-table td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #a5b4fc; }
+  .schema-table td:nth-child(2) { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #fcd34d; }
+
+  /* ── toc ── */
+  .toc {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 40px;
+  }
+  .toc h3 { color: var(--accent-light); font-size: 0.9rem; margin-bottom: 12px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; font-size: 0.88rem; }
+  .toc a { color: var(--muted); }
+  .toc a:hover { color: var(--accent-light); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Sportza Rating System</h1>
+    <p class="sub">Version 3.0 &nbsp;·&nbsp; April 2026 &nbsp;·&nbsp; Elo-based · Sport-aware · Anti-manipulation</p>
+    <div class="badge-row">
+      <span class="badge"><span class="dot"></span> Live in production</span>
+      <span class="badge">7 confidence tiers</span>
+      <span class="badge">Format-level tracks</span>
+      <span class="badge">Composite MOV</span>
+      <span class="badge">Anti-smurf dampener</span>
+      <span class="badge">Passive drift</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="#status">Implementation Status</a></li>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#basics">Rating Basics</a></li>
+      <li><a href="#formula">The Formula</a></li>
+      <li><a href="#factors">Factors 1–7</a></li>
+      <li><a href="#anti-manip">Anti-Manipulation</a></li>
+      <li><a href="#drift">Passive Drift</a></li>
+      <li><a href="#datamodel">Data Model</a></li>
+      <li><a href="#example">Worked Example</a></li>
+      <li><a href="#tiers">Confidence Tier Reference</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <!-- STATUS -->
+  <h2 id="status">Implementation Status</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Feature</th><th>Status</th><th>File(s)</th></tr></thead>
+      <tbody>
+        <tr><td>Elo backbone (result × expected score)</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>Rating clamp (100–3000)</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>Team average vs opponent average</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>Draw handling (result = 0.5)</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>Rating gap dampener (4 tiers)</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>Team size multiplier — per player's own team</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>MOV — scoreline-aware composite (completedGames)</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>MOV applies only to winners; losers/draws get ×1.0</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>baseK — continuous decay formula</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>Confidence — 7-tier system</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code>, 3 frontend files</td></tr>
+        <tr><td>Daily gain cap (+80/sport/format/24h)</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code></td></tr>
+        <tr><td>Smurf account dampener</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code>, schema</td></tr>
+        <tr><td>Format-based rating tracks (Singles vs Doubles)</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code>, <code>routes/matchmaking.ts</code>, schema</td></tr>
+        <tr><td>Passive rating drift (0.5%/month)</td><td><span class="live">✅ Live</span></td><td><code>workers/ratingDriftWorker.ts</code></td></tr>
+        <tr><td>Auto-initialize ratings for all sports on signup</td><td><span class="live">✅ Live</span></td><td><code>services/elo.ts</code>, <code>routes/auth.ts</code></td></tr>
+        <tr><td>Login-time backfill (fills missing sport ratings)</td><td><span class="live">✅ Live</span></td><td><code>routes/auth.ts</code></td></tr>
+        <tr><td>City-level ranking display</td><td><span class="planned">🔜 Planned</span></td><td>Frontend</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- OVERVIEW -->
+  <h2 id="overview">Overview</h2>
+  <p>The Sportza Rating System assigns every player a numerical skill rating per <strong>sport + format combination</strong>. It is designed to:</p>
+  <ul>
+    <li>Accurately reflect a player's true skill level over time</li>
+    <li>Reward performance quality, not just win/loss outcome</li>
+    <li>Stabilise progressively as more match data is collected</li>
+    <li>Resist gaming, manipulation, and artificial inflation</li>
+  </ul>
+  <p>The system is built on the <strong>Elo rating backbone</strong> (used in chess, FIFA rankings, and competitive gaming) and extends it with sport-specific, community-specific, and anti-abuse adjustments.</p>
+
+  <!-- BASICS -->
+  <h2 id="basics">Rating Basics</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Starting rating</td><td><strong>1000</strong> for every new sport + format combination</td></tr>
+        <tr><td>Rating floor</td><td><strong>100</strong></td></tr>
+        <tr><td>Rating ceiling</td><td><strong>3000</strong></td></tr>
+        <tr><td>Rating update triggers</td><td><code>COMPETITIVE</code> and <code>TOURNAMENT</code> match types only</td></tr>
+        <tr><td>Excluded match types</td><td>Friendly, casual, open-play</td></tr>
+        <tr><td>Rating tracks per format</td><td>Separate track per <code>sportId + formatName</code></td></tr>
+        <tr><td>Default format</td><td><code>"overall"</code> — assigned to all players at signup</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Format Separation</h3>
+  <p>Ratings are tracked <strong>independently</strong> per sport + format:</p>
+  <ul>
+    <li>Badminton Singles → <code>sportId=1, formatName="Singles"</code></li>
+    <li>Badminton Doubles → <code>sportId=1, formatName="Doubles"</code></li>
+    <li>Football 5-a-side → <code>sportId=3, formatName="5-a-side"</code></li>
+  </ul>
+  <p>The <code>"overall"</code> format is the default track, created automatically for every active sport when a player registers. Format-specific tracks are created <em>lazily</em> — on first competitive match in that format.</p>
+
+  <h3>Auto-Initialization</h3>
+  <div class="callout green">
+    When a player account is created (via email OTP, phone OTP, magic link, Google OAuth, Auth0), <code>initializeRatingsForAllSports()</code> runs immediately — creating one <code>SportSkillRating</code> row (<code>formatName = "overall"</code>, <code>rating = 1000</code>, <code>confidence = "unranked"</code>) for every active sport.
+  </div>
+
+  <h3>Login-Time Backfill</h3>
+  <div class="callout blue">
+    On every login, <code>initializeRatingsForAllSports()</code> is called again (idempotent — only inserts if no row exists). This ensures players who registered before auto-init was added receive ratings on next login, and that new sports added to the platform appear for all users automatically.
+  </div>
+
+  <!-- FORMULA -->
+  <h2 id="formula">The Formula</h2>
+  <div class="formula">
+new rating = clamp(old + effectiveK × (result − expected), 100, 3000)
+<br><br>
+effectiveK = baseK
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;× confidenceMultiplier
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;× movMultiplier
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;× teamSizeMultiplier
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;× ratingGapDampener
+  </div>
+
+  <!-- FACTORS -->
+  <h2 id="factors">Factors 1 – 7</h2>
+
+  <div class="factor-card">
+    <div class="fnum">Factor 1</div>
+    <h3>Result</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Outcome</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Win</td><td class="num">1.0</td></tr>
+          <tr><td>Draw</td><td class="num">0.5</td></tr>
+          <tr><td>Loss</td><td class="num">0.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>If <code>winnerTeam</code> on the match record is <code>null</code>, both teams receive <code>result = 0.5</code>.</p>
+  </div>
+
+  <div class="factor-card">
+    <div class="fnum">Factor 2</div>
+    <h3>Expected Score</h3>
+    <pre>expected = 1 / (1 + 10^((opponentAvg − myRating) / 400))</pre>
+    <p><code>opponentAvg</code> = average rating of all players on the opposing team.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Scenario</th><th>Expected score</th></tr></thead>
+        <tbody>
+          <tr><td>Equal ratings (1000 vs 1000)</td><td class="num">0.50</td></tr>
+          <tr><td>You are 200 pts stronger</td><td class="num">0.76</td></tr>
+          <tr><td>You are 400 pts stronger</td><td class="num">0.91</td></tr>
+          <tr><td>You are 200 pts weaker</td><td class="num">0.24</td></tr>
+          <tr><td>You are 400 pts weaker</td><td class="num">0.09</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout blue">Beating a much stronger opponent gives a huge gain. Losing to them loses almost nothing.</div>
+  </div>
+
+  <div class="factor-card">
+    <div class="fnum">Factor 3</div>
+    <h3>Base K — Experience Decay</h3>
+    <p>Continuous decay — no cliff edges:</p>
+    <pre>baseK = max(8, round(32 / (1 + matchesPlayed / 40)))</pre>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Matches</th><th>baseK</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td class="num">32</td></tr>
+          <tr><td>10</td><td class="num">24</td></tr>
+          <tr><td>20</td><td class="num">21</td></tr>
+          <tr><td>40</td><td class="num">16</td></tr>
+          <tr><td>80</td><td class="num">11</td></tr>
+          <tr><td>120</td><td class="num">9–10</td></tr>
+          <tr><td>200+</td><td class="num"><strong>8</strong> (floor)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The floor of <strong>8</strong> ensures the rating never becomes completely immovable.</p>
+  </div>
+
+  <div class="factor-card">
+    <div class="fnum">Factor 4</div>
+    <h3>Confidence Multiplier — 7 Tiers</h3>
+    <pre>tier = min(floor(matchesPlayed / 20), 6)</pre>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Matches</th><th>Label</th><th>Multiplier</th><th>Colour</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>0–19</td>
+            <td><span class="pill" style="background:#1e293b;color:#64748b;border:1px solid #475569">unranked</span></td>
+            <td class="num">×1.15</td>
+            <td><code style="color:#64748b">#64748B</code></td>
+          </tr>
+          <tr>
+            <td>20–39</td>
+            <td><span class="pill" style="background:#431407;color:#f97316">beginner</span></td>
+            <td class="num">×1.05</td>
+            <td><code style="color:#f97316">#F97316</code></td>
+          </tr>
+          <tr>
+            <td>40–59</td>
+            <td><span class="pill" style="background:#1c1408;color:#f59e0b">developing</span></td>
+            <td class="num">×0.95</td>
+            <td><code style="color:#f59e0b">#F59E0B</code></td>
+          </tr>
+          <tr>
+            <td>60–79</td>
+            <td><span class="pill" style="background:#0c1d3f;color:#3b82f6">established</span></td>
+            <td class="num">×0.85</td>
+            <td><code style="color:#3b82f6">#3B82F6</code></td>
+          </tr>
+          <tr>
+            <td>80–99</td>
+            <td><span class="pill" style="background:#052e16;color:#22c55e">advanced</span></td>
+            <td class="num">×0.75</td>
+            <td><code style="color:#22c55e">#22C55E</code></td>
+          </tr>
+          <tr>
+            <td>100–119</td>
+            <td><span class="pill" style="background:#1e1b4b;color:#6366f1">expert</span></td>
+            <td class="num">×0.65</td>
+            <td><code style="color:#6366f1">#6366F1</code></td>
+          </tr>
+          <tr>
+            <td>120+</td>
+            <td><span class="pill" style="background:#1a0d2e;color:#a855f7">master</span></td>
+            <td class="num">×0.55</td>
+            <td><code style="color:#a855f7">#A855F7</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Stored as <code>VARCHAR(12)</code>. Legacy labels (<code>provisional</code>, <code>low</code>, <code>medium</code>, <code>high</code>) are mapped gracefully to the nearest v3 tier.</p>
+
+    <h3>Combined baseK × confidenceMultiplier</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Matches</th><th>baseK</th><th>confMult</th><th>Combined</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td class="num">32</td><td class="num">×1.15</td><td class="num"><strong>36.8</strong></td></tr>
+          <tr><td>20</td><td class="num">21</td><td class="num">×1.05</td><td class="num"><strong>22.1</strong></td></tr>
+          <tr><td>40</td><td class="num">16</td><td class="num">×0.95</td><td class="num"><strong>15.2</strong></td></tr>
+          <tr><td>80</td><td class="num">11</td><td class="num">×0.75</td><td class="num"><strong>8.3</strong></td></tr>
+          <tr><td>120+</td><td class="num">~9</td><td class="num">×0.55</td><td class="num"><strong>~5.0</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="factor-card">
+    <div class="fnum">Factor 5</div>
+    <h3>Margin of Victory (MOV) Multiplier</h3>
+    <div class="callout amber">MOV is only applied to the <strong>winner</strong>. Losers and draws always receive <code>movMultiplier = 1.0</code>.</div>
+    <pre>movMultiplier = 1.0 + 0.35 × normalisedMargin&nbsp;&nbsp;[range: 1.00 → 1.35]</pre>
+
+    <h3>Sport detection (scoreType)</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>scoreType</th><th>Score structure</th></tr></thead>
+        <tbody>
+          <tr><td><code>badminton</code>, <code>squash</code>, <code>pickleball</code>, <code>tabletennis</code>, etc.</td><td>gamesWon {A,B} + completedGames[] composite</td></tr>
+          <tr><td><code>tennis</code>, <code>volleyball</code></td><td>setsWon {A,B} + completedSets[] composite</td></tr>
+          <tr><td><code>football</code>, <code>soccer</code>, <code>basketball</code>, <code>simple</code></td><td>scores {A,B} logistic normalisation</td></tr>
+          <tr><td><code>cricket</code></td><td>completedInnings[] run total difference</td></tr>
+          <tr><td>Unknown / malformed</td><td>Fallback → 0, movMultiplier = 1.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Scoreline-aware composite (racket/net sports)</h3>
+    <pre>normalisedMargin = 0.4 × gameWinRatio
+               + 0.4 × totalPointDominance
+               + 0.2 × avgWonGameDominance</pre>
+    <ul>
+      <li><code>gameWinRatio</code> = |gamesWon_A − gamesWon_B| / totalGames</li>
+      <li><code>totalPointDominance</code> = max((winnerPoints / allPoints − 0.5) / 0.5, 0)</li>
+      <li><code>avgWonGameDominance</code> = mean of |A−B|/(A+B) across winner's won games</li>
+    </ul>
+
+    <div class="callout green">
+      <strong>Example — Badminton 2–1 (11–2, 9–11, 13–11):</strong><br>
+      gameWinRatio = 0.333 &nbsp;·&nbsp; pointDominance = 0.158 &nbsp;·&nbsp; avgWonDominance = 0.349<br>
+      Composite = 0.264 → <strong>movMultiplier = 1.092</strong>
+    </div>
+    <div class="callout green">
+      <strong>Example — Badminton 2–0 (11–3, 11–5):</strong><br>
+      Composite ≈ 0.714 → <strong>movMultiplier = 1.25</strong>
+    </div>
+  </div>
+
+  <div class="factor-card">
+    <div class="fnum">Factor 6</div>
+    <h3>Team Size Multiplier</h3>
+    <p>Each player uses <strong>their own team's actual player count</strong>.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Players on my team</th><th>Multiplier</th></tr></thead>
+        <tbody>
+          <tr><td>1 (Singles)</td><td class="num">×1.0</td></tr>
+          <tr><td>2 (Doubles)</td><td class="num">×0.9</td></tr>
+          <tr><td>3+ (Team)</td><td class="num">×0.82</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>In a 2v3 match: team of 2 gets ×0.9; team of 3 gets ×0.82.</p>
+  </div>
+
+  <div class="factor-card">
+    <div class="fnum">Factor 7</div>
+    <h3>Rating Gap Dampener</h3>
+    <p>Applied per player based on their personal gap to the opposing team average.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Gap</th><th>Multiplier</th></tr></thead>
+        <tbody>
+          <tr><td>&lt; 150</td><td class="num">×1.00</td></tr>
+          <tr><td>150–299</td><td class="num">×0.95</td></tr>
+          <tr><td>300–499</td><td class="num">×0.85</td></tr>
+          <tr><td>500+</td><td class="num">×0.75</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ANTI-MANIPULATION -->
+  <h2 id="anti-manip">Anti-Manipulation Measures</h2>
+
+  <h3>12.1 Daily Rating Gain Cap</h3>
+  <p>Maximum <strong>+80 rating points per sport per format per 24-hour window</strong>. Excess gain is silently absorbed. Losses are never capped.</p>
+  <p><em>Implementation</em>: queries <code>RatingHistory</code> for positive deltas in the last 24h for the player's <code>sportId + formatName</code> before writing a new rating.</p>
+  <div class="callout red">Protects against: collusion, match fixing, arranged win streaks.</div>
+
+  <h3>12.2 Smurf Account Dampener</h3>
+  <p>Triggered when <strong>all three</strong> are simultaneously true:</p>
+  <ul>
+    <li><code>matchesPlayed &lt; 10</code></li>
+    <li>Win rate &gt; 80% (tracked via <code>winsCount</code>)</li>
+    <li>Average MOV across wins &gt; 0.7 (tracked via <code>totalMOVSum / winsCount</code>)</li>
+  </ul>
+  <p>MOV bonus coefficient is halved silently:</p>
+  <pre>movMultiplier = 1.0 + 0.175 × normalisedMargin   (instead of ×0.35)</pre>
+  <p>No flag shown to the player. Requires <code>winsCount</code> and <code>totalMOVSum</code> fields on <code>SportSkillRating</code>.</p>
+  <div class="callout red">Protects against: experienced players creating new accounts to farm lower-rated players.</div>
+
+  <h3>12.3 Natural Selectivity Penalty (built-in)</h3>
+  <p>Against much weaker opponents, <code>expected ≈ 1.0</code>, so <code>result − expected ≈ 0</code>. Playing only weak opponents gains almost nothing. The gap dampener further reduces K for large mismatches. No extra code required.</p>
+
+  <!-- DRIFT -->
+  <h2 id="drift">Passive Rating Drift</h2>
+  <p>All ratings are pulled <strong>0.5% toward 1000 per month</strong>, applied to everyone equally:</p>
+  <pre>newRating = round(oldRating + (1000 − oldRating) × 0.005)</pre>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Time (starting at 1500)</th><th>Rating</th></tr></thead>
+      <tbody>
+        <tr><td>Now</td><td class="num">1500</td></tr>
+        <tr><td>1 month</td><td class="num">1497</td></tr>
+        <tr><td>6 months</td><td class="num">1485</td></tr>
+        <tr><td>1 year</td><td class="num">1470</td></tr>
+        <tr><td>3 years</td><td class="num">1422</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout purple"><strong>Not a penalty for inactivity.</strong> Applies to all players equally. The confidence label is unaffected — a Master who stops playing keeps their Master label.</div>
+  <p><em>Implementation</em>: <code>workers/ratingDriftWorker.ts</code> — monthly schedule, batch size 500, writes <code>RatingHistory</code> with <code>activityId = null</code>.</p>
+
+  <!-- DATA MODEL -->
+  <h2 id="datamodel">Data Model</h2>
+
+  <h3>sport_skill_ratings</h3>
+  <div class="tbl-wrap">
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Default</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>INT PK</td><td>auto</td><td></td></tr>
+        <tr><td>userId</td><td>INT FK</td><td>—</td><td>→ users</td></tr>
+        <tr><td>sportId</td><td>INT FK</td><td>—</td><td>→ sports</td></tr>
+        <tr><td>formatName</td><td>VARCHAR(100)</td><td><code>"overall"</code></td><td>Format track. <span class="live">New in v3</span></td></tr>
+        <tr><td>rating</td><td>INT</td><td>1000</td><td>Current Elo rating</td></tr>
+        <tr><td>matchesPlayed</td><td>INT</td><td>0</td><td>Rated matches in this sport+format</td></tr>
+        <tr><td>winsCount</td><td>INT</td><td>0</td><td>Wins — used by smurf dampener. <span class="live">New in v3</span></td></tr>
+        <tr><td>totalMOVSum</td><td>DOUBLE</td><td>0</td><td>Sum of normalised margins across wins. <span class="live">New in v3</span></td></tr>
+        <tr><td>confidence</td><td>VARCHAR(12)</td><td><code>"unranked"</code></td><td>Widened from VARCHAR(10) for v3 tiers</td></tr>
+        <tr><td>lastUpdated</td><td>DATETIME</td><td>now()</td><td>Auto-updated</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout blue">
+    <strong>Unique key</strong>: <code>(userId, sportId, formatName)</code><br>
+    <strong>Index</strong>: <code>(sportId, formatName, rating)</code> — leaderboards and peer-matching
+  </div>
+
+  <h3>rating_history</h3>
+  <div class="tbl-wrap">
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Default</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>INT PK</td><td>auto</td><td></td></tr>
+        <tr><td>userId</td><td>INT FK</td><td>—</td><td>→ users</td></tr>
+        <tr><td>sportId</td><td>INT FK</td><td>—</td><td>→ sports</td></tr>
+        <tr><td>formatName</td><td>VARCHAR(100)</td><td><code>"overall"</code></td><td>Format at time of event. <span class="live">New in v3</span></td></tr>
+        <tr><td>oldRating</td><td>INT</td><td>—</td><td></td></tr>
+        <tr><td>newRating</td><td>INT</td><td>—</td><td></td></tr>
+        <tr><td>delta</td><td>INT</td><td>—</td><td>Signed change</td></tr>
+        <tr><td>activityId</td><td>INT FK</td><td>NULL</td><td>NULL = drift entry</td></tr>
+        <tr><td>createdAt</td><td>DATETIME</td><td>now()</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout blue">
+    <strong>Index</strong>: <code>(userId, sportId, formatName, createdAt)</code> — per-player trend charts
+  </div>
+
+  <!-- WORKED EXAMPLE -->
+  <h2 id="example">Worked Example</h2>
+  <div class="example-box">
+    <h3>Badminton Doubles, Competitive — Team A wins 2–1 (11–2, 9–11, 13–11)</h3>
+
+    <div class="tbl-wrap" style="margin-top:16px">
+      <table>
+        <thead><tr><th>Player</th><th>Team</th><th>Rating</th><th>Matches</th><th>Confidence</th><th>confMult</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>A1</td><td>A</td><td class="num">1000</td><td class="num">3</td>
+            <td><span class="pill" style="background:#1e293b;color:#64748b;border:1px solid #475569">unranked</span></td>
+            <td class="num">×1.15</td>
+          </tr>
+          <tr>
+            <td>A2</td><td>A</td><td class="num">950</td><td class="num">1</td>
+            <td><span class="pill" style="background:#1e293b;color:#64748b;border:1px solid #475569">unranked</span></td>
+            <td class="num">×1.15</td>
+          </tr>
+          <tr>
+            <td>B1</td><td>B</td><td class="num">1200</td><td class="num">25</td>
+            <td><span class="pill" style="background:#431407;color:#f97316">beginner</span></td>
+            <td class="num">×1.05</td>
+          </tr>
+          <tr>
+            <td>B2</td><td>B</td><td class="num">1100</td><td class="num">8</td>
+            <td><span class="pill" style="background:#1e293b;color:#64748b;border:1px solid #475569">unranked</span></td>
+            <td class="num">×1.15</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:12px"><strong>avgA = 975 &nbsp;·&nbsp; avgB = 1150</strong></p>
+    <p><strong>MOV composite</strong> (11–2, 9–11, 13–11): composite = 0.264 → <strong>movMultiplier = 1.092</strong></p>
+
+    <h3 style="margin-top:24px">A1 — winner</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Factor</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Expected vs 1150</td><td class="num">0.297</td></tr>
+          <tr><td>baseK (3 matches)</td><td class="num">30</td></tr>
+          <tr><td>confidenceMultiplier</td><td class="num">×1.15 (unranked)</td></tr>
+          <tr><td>movMultiplier</td><td class="num">×1.092</td></tr>
+          <tr><td>teamSizeMultiplier</td><td class="num">×0.9 (Doubles)</td></tr>
+          <tr><td>ratingGapDampener</td><td class="num">×0.95 (gap 150)</td></tr>
+          <tr><td>effectiveK</td><td class="num">30 × 1.15 × 1.092 × 0.9 × 0.95 ≈ <strong>32.1</strong></td></tr>
+          <tr><td>delta</td><td class="num">32.1 × (1 − 0.297) ≈ <strong>+22.6 → +23</strong></td></tr>
+          <tr><td><strong>New rating</strong></td><td class="num"><strong>1023</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:16px">B1 — loser</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Factor</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Expected vs 975</td><td class="num">0.785</td></tr>
+          <tr><td>baseK (25 matches)</td><td class="num">20</td></tr>
+          <tr><td>confidenceMultiplier</td><td class="num">×1.05 (beginner)</td></tr>
+          <tr><td>movMultiplier</td><td class="num">×1.0 (loser)</td></tr>
+          <tr><td>teamSizeMultiplier</td><td class="num">×0.9 (Doubles)</td></tr>
+          <tr><td>ratingGapDampener</td><td class="num">×0.95 (gap 225)</td></tr>
+          <tr><td>effectiveK</td><td class="num">20 × 1.05 × 1.0 × 0.9 × 0.95 ≈ <strong>18.0</strong></td></tr>
+          <tr><td>delta</td><td class="num">18.0 × (0 − 0.785) ≈ <strong>−14.1 → −14</strong></td></tr>
+          <tr><td><strong>New rating</strong></td><td class="num"><strong>1186</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TIERS REFERENCE -->
+  <h2 id="tiers">Confidence Tier Reference</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Label</th><th>matchesPlayed</th><th>Multiplier</th><th>Colour</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="pill" style="background:#1e293b;color:#64748b;border:1px solid #475569">unranked</span></td>
+          <td>0–19</td><td class="num">×1.15</td>
+          <td><code style="color:#64748b">#64748B</code></td>
+        </tr>
+        <tr>
+          <td><span class="pill" style="background:#431407;color:#f97316">beginner</span></td>
+          <td>20–39</td><td class="num">×1.05</td>
+          <td><code style="color:#f97316">#F97316</code></td>
+        </tr>
+        <tr>
+          <td><span class="pill" style="background:#1c1408;color:#f59e0b">developing</span></td>
+          <td>40–59</td><td class="num">×0.95</td>
+          <td><code style="color:#f59e0b">#F59E0B</code></td>
+        </tr>
+        <tr>
+          <td><span class="pill" style="background:#0c1d3f;color:#3b82f6">established</span></td>
+          <td>60–79</td><td class="num">×0.85</td>
+          <td><code style="color:#3b82f6">#3B82F6</code></td>
+        </tr>
+        <tr>
+          <td><span class="pill" style="background:#052e16;color:#22c55e">advanced</span></td>
+          <td>80–99</td><td class="num">×0.75</td>
+          <td><code style="color:#22c55e">#22C55E</code></td>
+        </tr>
+        <tr>
+          <td><span class="pill" style="background:#1e1b4b;color:#6366f1">expert</span></td>
+          <td>100–119</td><td class="num">×0.65</td>
+          <td><code style="color:#6366f1">#6366F1</code></td>
+        </tr>
+        <tr>
+          <td><span class="pill" style="background:#1a0d2e;color:#a855f7">master</span></td>
+          <td>120+</td><td class="num">×0.55</td>
+          <td><code style="color:#a855f7">#A855F7</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FAQ -->
+  <h2 id="faq">FAQ</h2>
+
+  <h3>Why did my rating barely change even though I won?</h3>
+  <p>You were heavily favoured. The system expected it, so the reward is small. Beating a stronger opponent moves your rating significantly.</p>
+
+  <h3>Why did I lose a lot of rating from one loss?</h3>
+  <p>You were heavily favoured and lost to a weaker opponent. Expected score was close to 1.0, so the loss produces a large negative delta.</p>
+
+  <h3>Why does winning 2–0 give more rating than 2–1?</h3>
+  <p>The composite MOV considers individual point scores — a dominant 2–0 sweep produces a much higher normalised margin than a scraped 2–1.</p>
+
+  <h3>Does not playing affect my rating?</h3>
+  <p>A 0.5%/month pull toward 1000 applies to everyone equally. A 1500-rated player drifts to ~1470 after one year. Confidence tier is never affected.</p>
+
+  <h3>Why is my Doubles rating different from my Singles rating?</h3>
+  <p>They are tracked independently. Format-specific tracks are created on your first competitive match in that format.</p>
+
+  <h3>Can I farm rating by playing weaker opponents?</h3>
+  <p>Nearly pointless. Expected score is already ~0.95, so gains are near zero. The gap dampener cuts K further for large mismatches.</p>
+
+  <h3>What happens if match scores are not recorded?</h3>
+  <p>MOV defaults to 1.0. The win/loss result processes normally. Rating updates never fail due to missing score data.</p>
+
+  <h3>Which match types update ratings?</h3>
+  <p>Only <code>COMPETITIVE</code> and <code>TOURNAMENT</code>. Open-play, friendly, and casual matches do not affect ratings.</p>
+
+  <h3>Does a draw affect both teams equally?</h3>
+  <p>Both get <code>result = 0.5</code> and <code>movMultiplier = 1.0</code>. Expected scores still differ, so a higher-rated team in a draw typically loses small points; the lower-rated team gains slightly.</p>
+
+  <h3>Why do I see all sports on my profile even though I've never played them?</h3>
+  <p>Sportza creates a default rating (1000, <code>unranked</code>) for every active sport at signup. This ensures a complete profile from day one and enables matchmaking suggestions across all sports immediately.</p>
+
+  <h3>Can my smurf dampener be triggered unfairly?</h3>
+  <p>All three conditions must be simultaneously true: very few matches, very high win rate, <em>and</em> very high average MOV. A player who legitimately dominates early due to genuine skill will see the dampener lift naturally as their match count grows past 10.</p>
+
+  <footer style="margin-top:64px;padding-top:24px;border-top:1px solid #1e293b;text-align:center;color:#475569;font-size:0.82rem">
+    Sportza Rating System v3.0 &nbsp;·&nbsp; Last updated April 2026 &nbsp;·&nbsp; Internal documentation
+  </footer>
+</div>
+</body>
+</html>

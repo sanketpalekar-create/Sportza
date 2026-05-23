@@ -1,0 +1,1182 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Model — Sportza v3.3</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-new { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'forest'});</script>
+</head>
+<body>
+  <header class="header">
+    <h1>Data Model — Sportza</h1>
+    <p class="subtitle">MySQL · Prisma ORM · 53 Models</p>
+    <p class="version">v3.3 — Last updated Apr 28, 2026</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI/UX Requirements</a>
+    <a href="booking-state-and-flows.html">Booking State & Flows</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+    <div class="section">
+      <h2>1. Database & ORM</h2>
+      <p><strong>Database:</strong> MySQL</p>
+      <p><strong>ORM:</strong> Prisma</p>
+      <p><strong>Schema path:</strong> <code>apps/api/prisma/schema.prisma</code></p>
+    </div>
+
+    <div class="section">
+      <h2>2. Model Overview (53 Models)</h2>
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Models</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Identity</td><td>User, Otp, TrainerProfile, TrainerVenue</td></tr>
+          <tr><td>Infrastructure</td><td>Sport, SportFormat, Venue, SportFacility, SportRate, VenueAddOn, Facility, Slot, FacilityPricingRule</td></tr>
+          <tr><td>Reviews</td><td>VenueReview, TrainerReview</td></tr>
+          <tr><td>Marketplace</td><td>Booking, SplitPayment, BookingAddOn, BookingPayment, Refund</td></tr>
+          <tr><td>Open Play</td><td>OpenPlay, OpenPlayPlayer</td></tr>
+          <tr><td>Matches</td><td>Match, MatchEvent, MatchConfirmation</td></tr>
+          <tr><td>Tournaments</td><td>Tournament, TournamentFixture</td></tr>
+          <tr><td>Training</td><td>Batch, BatchMembership, BatchSession, SessionAttendance, BatchPayment, BatchAnnouncement, PlayerBatchReview</td></tr>
+          <tr><td>Stats</td><td>Activity, ActivityParticipant, Participation, SportEvent, PlayerActivityStats, PlayerStats</td></tr>
+          <tr><td>Display / Scoreboard</td><td>VenueDisplay, DisplayPairing</td></tr>
+          <tr><td><strong>Skill Rating</strong></td><td>SportSkillRating, RatingHistory</td></tr>
+          <tr><td><strong>Social / Network</strong></td><td>PlayerConnection, PeerPlayInvite</td></tr>
+          <tr><td><strong>Notifications</strong></td><td>Notification</td></tr>
+          <tr><td><strong>Auth Tokens</strong></td><td>RefreshToken</td></tr>
+        </tbody>
+      </table>
+
+      <div class="section">
+        <h2>Core ER Diagram (Primary Models)</h2>
+        <div class="mermaid">
+erDiagram
+    User {
+        int id PK
+        string name
+        string email UK
+        string phone UK
+        string googleId UK
+        string role
+        string locationCity
+        json sports
+        datetime createdAt
+    }
+
+    Otp {
+        int id PK
+        string email
+        string phone
+        string code
+        datetime expiresAt
+    }
+
+    TrainerProfile {
+        int id PK
+        int userId FK "unique"
+        text bio
+        int yearsExperience
+        json sports
+        json certifications
+        json achievements
+        float rating
+        int reviewCount
+    }
+
+    TrainerVenue {
+        int id PK
+        int userId FK
+        int venueId FK
+    }
+
+    Sport {
+        int id PK
+        string name UK
+        string displayName
+        float defaultPricePerHour
+        json defaultRates
+        float defaultMinBookingHrs
+        json statFields
+        boolean isActive
+    }
+
+    SportFormat {
+        int id PK
+        int sportId FK
+        string name
+        int playersPerTeam
+        int minTeams
+        int maxTeams
+        string description
+        json config
+    }
+
+    Venue {
+        int id PK
+        string name
+        int ownerId FK
+        json sports
+        float gstRate
+        float commissionPercent
+        string locationCity
+        string locationAddr
+        json locationCoords
+        int capacity
+        float pricePerHour
+        json images
+        json availability
+        boolean isActive
+        datetime createdAt
+    }
+
+    SportFacility {
+        int id PK
+        int venueId FK
+        string name
+        string surfaceType
+        int count
+        json sports
+    }
+
+    SportRate {
+        int id PK
+        int venueId FK
+        int sportId FK
+        string sport
+        float minBookingHours
+        json rates
+    }
+
+    VenueAddOn {
+        int id PK
+        int venueId FK
+        string name
+        string category
+        float price
+        string unit
+        string sport
+    }
+
+    Facility {
+        int id PK
+        int venueId FK
+        string name
+        string surfaceType
+        json sports
+        int count
+    }
+
+    Slot {
+        int id PK
+        int facilityId FK
+        int venueId FK
+        datetime startTime
+        datetime endTime
+        float price
+        string status
+        int bookingId FK
+    }
+
+    FacilityPricingRule {
+        int id PK
+        int facilityId FK
+        int venueId FK
+        string ruleType
+        float ruleValue
+        json metadata
+        boolean isActive
+    }
+
+    VenueReview {
+        int id PK
+        int userId FK
+        int venueId FK
+        int rating
+        text review
+        datetime createdAt
+    }
+
+    TrainerReview {
+        int id PK
+        int userId FK
+        int trainerId FK
+        int trainerProfileId FK
+        int rating
+        text review
+        datetime createdAt
+    }
+
+    Booking {
+        int id PK
+        int userId FK
+        string bookingType
+        int venueId FK
+        int sportId FK
+        string sport
+        int facilityId
+        string facilityName
+        date bookingDate
+        string startTime
+        string endTime
+        float totalHours
+        float subtotal
+        float gstRate
+        float gstAmount
+        float totalAmount
+        float platformCommissionPercent
+        float platformCommissionAmount
+        float venueNetAmount
+        string paymentType
+        float paidAmount
+        string paymentStatus
+        string razorpayOrderId
+        string razorpayPaymentId
+        string status
+        int slotId FK
+        int batchId FK
+        string groupId
+    }
+
+    SplitPayment {
+        int id PK
+        int bookingId FK
+        int userId FK
+        float amount
+        string status
+        string razorpayOrderId
+        string razorpayPaymentId
+    }
+
+    BookingAddOn {
+        int id PK
+        int bookingId FK
+        string name
+        string category
+        float price
+        string unit
+        int quantity
+        float amount
+        int purchasedBy
+    }
+
+    BookingPayment {
+        int id PK
+        int bookingId FK
+        int userId FK
+        float amount
+        string paymentMethod
+        string paymentGatewayId
+        string razorpayOrderId
+        string status
+        int splitIndex
+    }
+
+    Refund {
+        int id PK
+        int bookingId FK
+        int userId FK
+        int splitIndex
+        float amountPaid
+        float amountRefunded
+        float platformFee
+        string reason
+        string razorpayPaymentId
+        string razorpayRefundId
+        string status
+        string failureReason
+    }
+
+    OpenPlay {
+        int id PK
+        int bookingId FK "unique"
+        int venueId FK
+        int sportId FK
+        string sport
+        string formatName
+        int playersPerTeam
+        int maxPlayers
+        int createdById FK
+        int facilityId
+        string facilityName
+        string title
+        string status
+        date bookingDate
+        string startTime
+        string endTime
+    }
+
+    OpenPlayPlayer {
+        int id PK
+        int openPlayId FK
+        int userId FK
+    }
+
+    Match {
+        int id PK
+        int bookingId FK
+        int tournamentId FK
+        int sportId FK
+        string sportName
+        string formatName
+        int playersPerTeam
+        int venueId FK
+        string matchType
+        string loggingMode
+        json teams
+        string winnerTeam
+        datetime matchDate
+        json scores
+        string scoreType
+        string status
+        json playerStats
+        int createdById FK
+        boolean statsProcessed
+    }
+
+    MatchEvent {
+        int id PK
+        int matchId FK
+        string team
+        int playerId FK
+        string eventType
+        int eventValue
+        datetime eventTimestamp
+        json metadata
+    }
+
+    MatchConfirmation {
+        int id PK
+        int matchId FK
+        int playerId FK
+        string status
+        datetime respondedAt
+    }
+
+    Tournament {
+        int id PK
+        string name
+        text description
+        int sportId FK
+        string sport
+        string format
+        json stages
+        string matchFormatName
+        int venueId FK
+        json location
+        int createdById FK
+        int maxTeams
+        json teams
+        string status
+        json winner
+        json runnerUp
+        date startDate
+        date endDate
+    }
+
+    TournamentFixture {
+        int id PK
+        int tournamentId FK
+        int stage
+        int round
+        int groupIndex
+        int matchOrder
+        string team1Type
+        json team1Ref
+        string team2Type
+        json team2Ref
+        int matchId FK
+        string status
+    }
+
+    Batch {
+        int id PK
+        int trainerId FK
+        string name
+        text description
+        json location
+        int venueId FK
+        float venueDiscountPct
+        float commissionPercent
+        int sportId FK
+        string sport
+        json sportFees
+        json feeSchedules
+        int capacity
+        string joinType
+        float reservationPercent
+        json schedule
+        boolean isActive
+    }
+
+    BatchMembership {
+        int id PK
+        int batchId FK
+        int playerId FK
+        datetime joinDate
+        string status
+        string reservationStatus
+        string paymentStatus
+    }
+
+    BatchSession {
+        int id PK
+        int batchId FK
+        date date
+        string startTime
+        string endTime
+        string status
+    }
+
+    SessionAttendance {
+        int id PK
+        int sessionId FK
+        int playerId FK
+        string status
+    }
+
+    BatchPayment {
+        int id PK
+        int batchId FK
+        int playerId FK
+        int payerId FK
+        int cycleMonth
+        int cycleYear
+        string paymentMode
+        string validationStatus
+        float amount
+        float platformCommissionPercent
+        float platformCommissionAmount
+        float trainerNetAmount
+        string status
+    }
+
+    BatchAnnouncement {
+        int id PK
+        int batchId FK
+        int trainerId FK
+        text message
+        datetime createdAt
+    }
+
+    PlayerBatchReview {
+        int id PK
+        int batchId FK
+        int playerId FK
+        int trainerId FK
+        int year
+        int month
+        json ratings
+        text comment
+    }
+
+    Activity {
+        int id PK
+        string type
+        int sportId FK
+        string sport
+        int referenceId
+        int venueId FK
+        int bookingId FK
+        int createdById FK
+        datetime startTime
+        datetime endTime
+        string status
+    }
+
+    ActivityParticipant {
+        int id PK
+        int activityId FK
+        int userId FK
+    }
+
+    Participation {
+        int id PK
+        int activityId FK
+        int userId FK
+        string role
+        string teamId
+    }
+
+    SportEvent {
+        int id PK
+        int activityId FK
+        int playerId FK
+        string eventType
+        json value
+        datetime timestamp
+        json metadata
+    }
+
+    PlayerActivityStats {
+        int id PK
+        int activityId FK
+        int playerId FK
+        int sportId FK
+        string sport
+        json stats
+    }
+
+    PlayerStats {
+        int id PK
+        int playerId FK
+        int sportId FK
+        string sport
+        int totalMatches
+        int matchesWon
+        int matchesLost
+        json stats
+        float winPercentage
+        datetime lastUpdated
+    }
+
+    User ||--o| TrainerProfile : "has profile"
+    User ||--o{ TrainerVenue : "trainer at"
+    User ||--o{ Venue : owns
+    User ||--o{ Booking : makes
+    User ||--o{ SplitPayment : "split payer"
+    User ||--o{ BookingPayment : pays
+    User ||--o{ Refund : "refunded to"
+    User ||--o{ VenueReview : "reviews venue"
+    User ||--o{ TrainerReview : "reviews trainer"
+    User ||--o{ OpenPlay : creates
+    User ||--o{ OpenPlayPlayer : "joins play"
+    User ||--o{ Match : "creates match"
+    User ||--o{ MatchEvent : "logs event"
+    User ||--o{ MatchConfirmation : confirms
+    User ||--o{ Tournament : organizes
+    User ||--o{ Batch : "trains as trainer"
+    User ||--o{ BatchMembership : "joins batch"
+    User ||--o{ BatchPayment : "pays or receives"
+    User ||--o{ BatchAnnouncement : announces
+    User ||--o{ PlayerBatchReview : "reviews player"
+    User ||--o{ SessionAttendance : attends
+    User ||--o{ PlayerStats : "career stats"
+    User ||--o{ PlayerActivityStats : "activity stats"
+    User ||--o{ Participation : participates
+    User ||--o{ SportEvent : "sport events"
+    User ||--o{ ActivityParticipant : "in activity"
+    User ||--o{ Activity : "creates activity"
+
+    Sport ||--o{ SportFormat : defines
+    Sport ||--o{ Match : governs
+    Sport ||--o{ Booking : "booked for"
+    Sport ||--o{ OpenPlay : "played in"
+    Sport ||--o{ Batch : "trained in"
+    Sport ||--o{ Tournament : "competed in"
+    Sport ||--o{ Activity : "activity for"
+    Sport ||--o{ SportRate : "rates for"
+    Sport ||--o{ PlayerStats : "stats for"
+    Sport ||--o{ PlayerActivityStats : "activity stats"
+    TrainerProfile ||--o{ TrainerReview : "receives reviews"
+
+    Venue ||--o{ SportFacility : contains
+    Venue ||--o{ SportRate : "rate overrides"
+    Venue ||--o{ VenueAddOn : offers
+    Venue ||--o{ Facility : "has facilities"
+    Venue ||--o{ Slot : provides
+    Venue ||--o{ FacilityPricingRule : configures
+    Venue ||--o{ Booking : "bookings at"
+    Venue ||--o{ OpenPlay : "open plays at"
+    Venue ||--o{ Match : "matches at"
+    Venue ||--o{ Batch : "batches at"
+    Venue ||--o{ Tournament : "tournaments at"
+    Venue ||--o{ VenueReview : "reviewed"
+    Venue ||--o{ TrainerVenue : "trainers at"
+    Venue ||--o{ Activity : "activities at"
+
+    Facility ||--o{ Slot : schedules
+    SportFacility ||--o{ FacilityPricingRule : "pricing rules"
+
+    Booking ||--o{ SplitPayment : splits
+    Booking ||--o{ BookingAddOn : "has add-ons"
+    Booking ||--o{ BookingPayment : receives
+    Booking ||--o{ Refund : triggers
+    Booking ||--o{ Slot : reserves
+    Booking ||--o| OpenPlay : "creates open play"
+    Booking ||--o{ Match : spawns
+    Booking ||--o{ Activity : "linked activity"
+
+    OpenPlay ||--o{ OpenPlayPlayer : accepts
+
+    Match ||--o{ MatchEvent : logs
+    Match ||--o{ MatchConfirmation : requires
+    Match ||--o{ TournamentFixture : "fixture link"
+
+    Tournament ||--o{ TournamentFixture : generates
+    Tournament ||--o{ Match : "tournament matches"
+
+    Batch ||--o{ BatchMembership : enrolls
+    Batch ||--o{ BatchSession : schedules
+    Batch ||--o{ BatchPayment : collects
+    Batch ||--o{ BatchAnnouncement : broadcasts
+    Batch ||--o{ PlayerBatchReview : "monthly reviews"
+    Batch ||--o{ Booking : "batch bookings"
+
+    BatchSession ||--o{ SessionAttendance : records
+
+    Activity ||--o{ ActivityParticipant : includes
+    Activity ||--o{ Participation : tracks
+    Activity ||--o{ SportEvent : records
+    Activity ||--o{ PlayerActivityStats : measures
+
+    VenueDisplay {
+        int id PK
+        int venueId FK
+        string courtName
+        string status
+        int currentMatchId FK
+        datetime lastPingAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    DisplayPairing {
+        int id PK
+        int displayId FK
+        string token UK
+        int matchId FK
+        datetime claimedAt
+        datetime expiresAt
+        datetime createdAt
+    }
+
+    Venue ||--o{ VenueDisplay : "has courts"
+    VenueDisplay ||--o{ DisplayPairing : "generates sessions"
+    Match ||--o{ VenueDisplay : "shown on"
+    Match ||--o{ DisplayPairing : "claimed by"
+        </div>
+      </div>
+
+      <h3 style="margin: 1.5rem 0 0.75rem; color: #14532d; font-size: 1.1rem;">Domain-Specific Diagrams</h3>
+
+      <div class="section">
+        <h2>ER Diagram — Identity & Infrastructure</h2>
+        <div class="mermaid">
+erDiagram
+    User {
+        int id PK
+        string email UK
+        string name
+        string password
+        string phone UK
+        string googleId UK
+        string role
+        string locationCity
+        json sports
+    }
+    TrainerProfile {
+        int id PK
+        int userId UK
+        text bio
+        int yearsExperience
+        json sports
+        json certifications
+        float rating
+        int reviewCount
+    }
+    Sport {
+        int id PK
+        string name UK
+        string displayName
+        float defaultPricePerHour
+        json statFields
+        boolean isActive
+    }
+    SportFormat {
+        int id PK
+        int sportId FK
+        string name
+        int playersPerTeam
+    }
+    Venue {
+        int id PK
+        string name
+        int ownerId FK
+        float gstRate
+        float commissionPercent
+        string locationCity
+        string locationAddr
+        int capacity
+        float pricePerHour
+        boolean isActive
+    }
+    SportFacility {
+        int id PK
+        int venueId FK
+        string name
+        string surfaceType
+        int count
+        json sports
+    }
+    Facility {
+        int id PK
+        int venueId FK
+        string name
+        string surfaceType
+    }
+    Slot {
+        int id PK
+        int facilityId FK
+        int venueId FK
+        datetime startTime
+        datetime endTime
+        float price
+        string status
+        int bookingId FK
+    }
+    FacilityPricingRule {
+        int id PK
+        int facilityId FK
+        int venueId FK
+        string ruleType
+        float ruleValue
+        json metadata
+        boolean isActive
+    }
+    VenueAddOn {
+        int id PK
+        int venueId FK
+        string name
+        string category
+        float price
+        string unit
+    }
+    SportRate {
+        int id PK
+        int venueId FK
+        int sportId FK
+        string sport
+        float minBookingHours
+        json rates
+    }
+    User ||--o| TrainerProfile : "has profile"
+    User ||--o{ Venue : owns
+    Sport ||--o{ SportFormat : defines
+    Sport ||--o{ SportRate : "rates for"
+    Venue ||--o{ SportFacility : contains
+    Venue ||--o{ Facility : has
+    Venue ||--o{ Slot : provides
+    Venue ||--o{ VenueAddOn : offers
+    Venue ||--o{ SportRate : "rate overrides"
+    Facility ||--o{ Slot : schedules
+    SportFacility ||--o{ FacilityPricingRule : "pricing rules"
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>ER Diagram — Marketplace (Booking & Payments)</h2>
+        <div class="mermaid">
+erDiagram
+    Sport {
+        int id PK
+        string name UK
+        string displayName
+    }
+    Booking {
+        int id PK
+        int userId FK
+        string bookingType
+        int venueId FK
+        int sportId FK
+        string sport
+        int facilityId
+        string facilityName
+        date bookingDate
+        string startTime
+        string endTime
+        float subtotal
+        float gstAmount
+        float totalAmount
+        float platformCommissionAmount
+        float venueNetAmount
+        string paymentType
+        string status
+        string groupId
+    }
+    SplitPayment {
+        int id PK
+        int bookingId FK
+        int userId FK
+        float amount
+        string status
+        string razorpayOrderId
+    }
+    BookingAddOn {
+        int id PK
+        int bookingId FK
+        string name
+        float price
+        int quantity
+        float amount
+        int purchasedBy
+    }
+    BookingPayment {
+        int id PK
+        int bookingId FK
+        int userId FK
+        float amount
+        string paymentMethod
+        string razorpayOrderId
+        string status
+    }
+    Refund {
+        int id PK
+        int bookingId FK
+        int userId FK
+        float amountPaid
+        float amountRefunded
+        float platformFee
+        string reason
+        string status
+    }
+    Sport ||--o{ Booking : "booked for"
+    Booking ||--o{ SplitPayment : splits
+    Booking ||--o{ BookingAddOn : "has add-ons"
+    Booking ||--o{ BookingPayment : receives
+    Booking ||--o{ Refund : triggers
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>ER Diagram — Open Play, Matches & Tournaments</h2>
+        <div class="mermaid">
+erDiagram
+    Sport {
+        int id PK
+        string name UK
+        string displayName
+    }
+    OpenPlay {
+        int id PK
+        int bookingId UK
+        int venueId FK
+        int sportId FK
+        string sport
+        string formatName
+        int maxPlayers
+        int createdById FK
+        string status
+        date bookingDate
+    }
+    OpenPlayPlayer {
+        int id PK
+        int openPlayId FK
+        int userId FK
+    }
+    Match {
+        int id PK
+        int bookingId FK
+        int tournamentId FK
+        int sportId FK
+        string sportName
+        string formatName
+        json teams
+        string winnerTeam
+        datetime matchDate
+        json scores
+        string scoreType
+        string status
+        json playerStats
+    }
+    MatchEvent {
+        int id PK
+        int matchId FK
+        string team
+        int playerId FK
+        string eventType
+        int eventValue
+        datetime eventTimestamp
+    }
+    MatchConfirmation {
+        int id PK
+        int matchId FK
+        int playerId FK
+        string status
+    }
+    Tournament {
+        int id PK
+        string name
+        int sportId FK
+        string sport
+        string format
+        int venueId FK
+        int createdById FK
+        json teams
+        string status
+        json winner
+        json runnerUp
+    }
+    TournamentFixture {
+        int id PK
+        int tournamentId FK
+        int round
+        int matchOrder
+        json team1Ref
+        json team2Ref
+        int matchId FK
+        string status
+    }
+    Sport ||--o{ OpenPlay : "played in"
+    Booking ||--o| OpenPlay : creates
+    OpenPlay ||--o{ OpenPlayPlayer : accepts
+    Booking ||--o{ Match : spawns
+    Match ||--o{ MatchEvent : logs
+    Match ||--o{ MatchConfirmation : requires
+    Tournament ||--o{ TournamentFixture : generates
+    TournamentFixture ||--o| Match : resolves
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>ER Diagram — Training Lifecycle</h2>
+        <div class="mermaid">
+erDiagram
+    Sport {
+        int id PK
+        string name UK
+        string displayName
+    }
+    Batch {
+        int id PK
+        int trainerId FK
+        string name
+        int venueId FK
+        float commissionPercent
+        int sportId FK
+        string sport
+        json sportFees
+        int capacity
+        string joinType
+        json schedule
+        boolean isActive
+    }
+    BatchMembership {
+        int id PK
+        int batchId FK
+        int playerId FK
+        string status
+        string paymentStatus
+    }
+    BatchSession {
+        int id PK
+        int batchId FK
+        date date
+        string startTime
+        string endTime
+        string status
+    }
+    SessionAttendance {
+        int id PK
+        int sessionId FK
+        int playerId FK
+        string status
+    }
+    BatchPayment {
+        int id PK
+        int batchId FK
+        int playerId FK
+        int payerId FK
+        int cycleMonth
+        int cycleYear
+        float amount
+        float platformCommissionAmount
+        float trainerNetAmount
+    }
+    BatchAnnouncement {
+        int id PK
+        int batchId FK
+        int trainerId FK
+        text message
+    }
+    PlayerBatchReview {
+        int id PK
+        int batchId FK
+        int playerId FK
+        int trainerId FK
+        int year
+        int month
+        json ratings
+        text comment
+    }
+    PlayerStats {
+        int id PK
+        int playerId FK
+        int sportId FK
+        string sport
+        int totalMatches
+        int matchesWon
+        int matchesLost
+        json stats
+        float winPercentage
+    }
+    Sport ||--o{ Batch : "trained in"
+    Batch ||--o{ BatchMembership : enrolls
+    Batch ||--o{ BatchSession : schedules
+    Batch ||--o{ BatchPayment : collects
+    Batch ||--o{ BatchAnnouncement : broadcasts
+    Batch ||--o{ PlayerBatchReview : "monthly reviews"
+    BatchSession ||--o{ SessionAttendance : records
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>3. Key Relations</h2>
+      <table>
+        <thead>
+          <tr><th>From</th><th>To</th><th>Relationship</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>User</td><td>Booking</td><td>One-to-many</td></tr>
+          <tr><td>Venue</td><td>Facility</td><td>One-to-many</td></tr>
+          <tr><td>Facility</td><td>Slot</td><td>One-to-many</td></tr>
+          <tr><td>Slot</td><td>Booking</td><td>One-to-many</td></tr>
+          <tr><td>Booking</td><td>OpenPlay</td><td>One-to-one (optional)</td></tr>
+          <tr><td>Batch</td><td>BatchSession</td><td>One-to-many</td></tr>
+          <tr><td>Match</td><td>MatchEvent</td><td>One-to-many</td></tr>
+          <tr><td>Tournament</td><td>TournamentFixture</td><td>One-to-many</td></tr>
+          <tr><td>User</td><td>TrainerProfile</td><td>One-to-one</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>4. Key Indexes</h2>
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Indexes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>User</td><td>email (unique), auth0Id (unique)</td></tr>
+          <tr><td>Booking</td><td>userId, slotId, status, createdAt</td></tr>
+          <tr><td>Slot</td><td>facilityId, startTime, endTime</td></tr>
+          <tr><td>OpenPlay</td><td>bookingId (unique), sportId, scheduledAt</td></tr>
+          <tr><td>Match</td><td>sportId, status, scheduledAt</td></tr>
+          <tr><td>Batch</td><td>trainerId, sportId, status</td></tr>
+          <tr><td>Tournament</td><td>sportId, status, startDate</td></tr>
+          <tr><td>VenueDisplay</td><td>venueId</td></tr>
+          <tr><td>DisplayPairing</td><td>token (unique), displayId</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>5. InstantBook & Slots</h2>
+      <p><strong>Slot</strong> is the reservable resource. Each slot belongs to a Facility and has a start/end time. Bookings reference a slot.</p>
+      <p><strong>FacilityPricingRule</strong> types define pricing logic: peak/off-peak, weekday/weekend, flat rate, per-hour, etc.</p>
+    </div>
+
+    <div class="section">
+      <h2>6. Open Play</h2>
+      <p><strong>OpenPlay</strong> links to a <strong>Booking</strong> (unique relationship). Open play sessions are created from bookings.</p>
+      <p><strong>OpenPlayPlayer</strong> is the join table between OpenPlay and User (players). Tracks participation in open play sessions.</p>
+    </div>
+
+    <div class="section">
+      <h2>7. Match & Stats</h2>
+      <p><strong>Match</strong> represents a game or competition. <strong>MatchEvent</strong> records events during a match (goals, fouls, etc.).</p>
+      <p><strong>PlayerStats</strong> aggregates player performance. Stats are derived from Match, Activity, and Participation data.</p>
+    </div>
+
+    <div class="section">
+      <h2>8. Training Lifecycle</h2>
+      <p><strong>Batch</strong> → <strong>BatchSession</strong> → <strong>SessionAttendance</strong></p>
+      <p>Trainers create Batches; each Batch has multiple BatchSessions. SessionAttendance tracks which members attended each session.</p>
+    </div>
+
+    <div class="section">
+      <h2>9. Display / Scoreboard Pairing</h2>
+      <p>Two models implement the hybrid permanent-court / dynamic-session pairing system for venue scoreboards.</p>
+
+      <h3>VenueDisplay — permanent court</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>Int PK</td><td>Stable identity for this court across sessions</td></tr>
+          <tr><td><code>venueId</code></td><td>Int FK</td><td>Owner venue</td></tr>
+          <tr><td><code>courtName</code></td><td>String</td><td>e.g. "Court 1", "Turf A"</td></tr>
+          <tr><td><code>status</code></td><td>String</td><td><code>idle</code> / <code>awaiting</code> / <code>live</code></td></tr>
+          <tr><td><code>currentMatchId</code></td><td>Int? FK</td><td>Match currently shown on this display</td></tr>
+          <tr><td><code>lastPingAt</code></td><td>DateTime?</td><td>Last TV heartbeat</td></tr>
+        </tbody>
+      </table>
+
+      <h3>DisplayPairing — dynamic session token</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>token</code></td><td>String UK</td><td>48-char random hex, one per session</td></tr>
+          <tr><td><code>displayId</code></td><td>Int FK</td><td>Which court this token is for</td></tr>
+          <tr><td><code>matchId</code></td><td>Int? FK</td><td>Filled when phone user claims the session</td></tr>
+          <tr><td><code>claimedAt</code></td><td>DateTime?</td><td>When the match was linked</td></tr>
+          <tr><td><code>expiresAt</code></td><td>DateTime</td><td>60 minutes from generation by default</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Pairing flow</h3>
+      <div class="mermaid">
+sequenceDiagram
+  participant VO as VenueOwner
+  participant API as ApiServer
+  participant TV as TvBrowser
+  participant Phone as ScorerPhone
+
+  VO->>API: POST /displays/:id/pair
+  API-->>VO: token expiresAt displayUrl
+
+  TV->>API: GET /display/pair/token
+  TV->>API: SocketIO pairing join token
+
+  Phone->>API: POST /displays/claim/token matchId
+  API->>API: mark claimed set currentMatchId
+  API-->>TV: SocketIO display paired matchId
+  TV->>TV: navigate to scoreboard/matchId
+      </div>
+
+      <p>Old unclaimed sessions for the same court are expired immediately when a new one is generated. The TV browser navigates once to the scoreboard on receiving <code>display:paired</code> — no polling or continuous refresh required.</p>
+
+      <p>Route: <code>GET /venue-owner/displays</code> — venue owner court management. Route: <code>/display/pair/:token</code> — TV fullscreen pairing page. Route: <code>/claim/:token</code> — phone claim page (auth required).</p>
+    </div>
+  </main>
+</body>
+</html>
+
+

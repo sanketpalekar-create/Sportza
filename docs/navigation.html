@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Navigation — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'forest'});</script>
+</head>
+<body>
+  <header class="header">
+    <h1>App Navigation — Sportza</h1>
+    <p class="subtitle">Routes · Bottom Nav · Role Access · Auth Flow</p>
+    <p class="version">v3.0 — Last updated Mar 2026</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI & UX</a>
+    <a href="booking-state-and-flows.html">Booking State</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+    <section class="section">
+      <h2>1. Philosophy</h2>
+      <p><strong>Booking = core revenue</strong>; <strong>Open Play + Stats = retention</strong>. Navigation is designed to surface booking quickly while keeping social and competitive features one tap away.</p>
+    </section>
+
+    <section class="section">
+      <h2>2. Primary Navigation</h2>
+      <p><strong>Single 5-tab BottomNav</strong>: Home, Venues, Matches, Train, Profile. The old role-switching nav has been replaced by a single unified nav with role-specific routes (e.g. <code>/trainer/*</code>, <code>/venue-owner/*</code>) for trainers and venue owners.</p>
+
+      <div class="section">
+        <h2>Navigation Tree</h2>
+        <div class="mermaid">
+graph TD
+    NAV[Bottom Nav] --> HOME[Home]
+    NAV --> VENUES[Venues]
+    NAV --> MATCHES[Matches]
+    NAV --> TRAIN[Train]
+    NAV --> PROFILE[Profile]
+    VENUES --> V1["/venues"]
+    V1 --> V2["/venues/:id"]
+    V2 --> V3["/book"]
+    MATCHES --> M1["/matches"]
+    M1 --> M2["/matches/:id"]
+    TRAIN --> T1["/training"]
+    TRAIN --> OP1["/open-plays"]
+    PROFILE --> P1["/profile"]
+    PROFILE --> P2["/stats"]
+    PROFILE --> P3["/payments"]
+    P1 --> TR["/trainer/*"]
+    P1 --> VO["/venue-owner/*"]
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Route Map</h2>
+      
+      <h3>Public Routes</h3>
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>/</code></td><td>Home</td></tr>
+          <tr><td><code>/venues</code></td><td>Venue listing</td></tr>
+          <tr><td><code>/venues/:id</code></td><td>Venue detail</td></tr>
+          <tr><td><code>/training</code></td><td>Training programs</td></tr>
+          <tr><td><code>/training/:id</code></td><td>Training detail</td></tr>
+          <tr><td><code>/open-plays</code></td><td>Open play listing</td></tr>
+          <tr><td><code>/open-plays/:id</code></td><td>Open play detail</td></tr>
+          <tr><td><code>/tournaments</code></td><td>Tournament listing</td></tr>
+          <tr><td><code>/tournaments/:id</code></td><td>Tournament detail</td></tr>
+          <tr><td><code>/leaderboard</code></td><td>Leaderboard</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Auth Routes</h3>
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>/login</code></td><td>Login</td></tr>
+          <tr><td><code>/register</code></td><td>Registration</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Protected Routes</h3>
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>/book</code></td><td>Booking flow</td></tr>
+          <tr><td><code>/bookings</code></td><td>My bookings</td></tr>
+          <tr><td><code>/bookings/:id</code></td><td>Booking detail</td></tr>
+          <tr><td><code>/matches</code></td><td>My matches</td></tr>
+          <tr><td><code>/matches/:id</code></td><td>Match detail</td></tr>
+          <tr><td><code>/open-plays/create</code></td><td>Create open play</td></tr>
+          <tr><td><code>/open-plays/:id/manage</code></td><td>Manage open play</td></tr>
+          <tr><td><code>/tournaments/create</code></td><td>Create tournament</td></tr>
+          <tr><td><code>/stats</code></td><td>Stats overview</td></tr>
+          <tr><td><code>/stats/analytics</code></td><td>Analytics</td></tr>
+          <tr><td><code>/stats/sport/:sport</code></td><td>Sport-specific stats</td></tr>
+          <tr><td><code>/stats/match/:matchId</code></td><td>Match stats</td></tr>
+          <tr><td><code>/profile</code></td><td>User profile</td></tr>
+          <tr><td><code>/payments</code></td><td>Payment history</td></tr>
+          <tr><td><code>/payments/receipt/:id</code></td><td>Payment receipt</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Trainer Routes</h3>
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>/trainer</code></td><td>Trainer dashboard</td></tr>
+          <tr><td><code>/trainer/sessions</code></td><td>Sessions</td></tr>
+          <tr><td><code>/trainer/payments</code></td><td>Payments</td></tr>
+          <tr><td><code>/trainer/reviews</code></td><td>Reviews</td></tr>
+          <tr><td><code>/trainer/batches</code></td><td>Batches</td></tr>
+          <tr><td><code>/trainer/batches/create</code></td><td>Create batch</td></tr>
+          <tr><td><code>/trainer/batches/:id</code></td><td>Batch detail</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Venue Owner Routes</h3>
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>/venue-owner</code></td><td>Venue owner dashboard</td></tr>
+          <tr><td><code>/venue-owner/bookings</code></td><td>Bookings</td></tr>
+          <tr><td><code>/venue-owner/facilities</code></td><td>Facilities</td></tr>
+          <tr><td><code>/venue-owner/payments</code></td><td>Payments</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>4. Role-Based Access</h2>
+      <table>
+        <thead><tr><th>Role</th><th>Access</th></tr></thead>
+        <tbody>
+          <tr><td><code>player</code></td><td>Protected + public routes; booking, matches, stats, profile</td></tr>
+          <tr><td><code>trainer</code></td><td>All player routes + /trainer/* routes</td></tr>
+          <tr><td><code>venue_owner</code></td><td>All player routes + /venue-owner/* routes</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. Auth Flow</h2>
+      <p>Uses <strong>Auth0</strong> with:</p>
+      <ul>
+        <li><strong>Google SSO</strong> — One-tap login</li>
+        <li><strong>Email OTP</strong> — Passwordless</li>
+        <li><strong>Magic Link</strong> — Email-based verification</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>6. Frontend Structure</h2>
+      <p><strong>38 pages</strong>, with:</p>
+      <ul>
+        <li><code>MainLayout</code> — Wraps authenticated app with BottomNav</li>
+        <li><code>AuthLayout</code> — Wraps login/register</li>
+        <li><code>AuthGuard</code> — Protects routes requiring authentication</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>7. Secondary Patterns</h2>
+      <ul>
+        <li><strong>Stack</strong> — Standard push/pop navigation</li>
+        <li><strong>Modal</strong> — Overlays for quick actions</li>
+        <li><strong>Full-screen</strong> — Payment, booking confirmation</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>8. UX Rules</h2>
+      <ul>
+        <li>Max 3 taps to book</li>
+        <li>Logical back navigation</li>
+        <li>No deep nesting &gt;4 levels</li>
+        <li>Stats accessible in 1 tap</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

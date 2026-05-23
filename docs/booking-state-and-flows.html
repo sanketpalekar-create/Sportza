@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking State & Flows — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .section pre { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'forest'});</script>
+</head>
+<body>
+  <header class="header">
+    <h1>Booking State & Flows — Sportza</h1>
+    <p class="subtitle">Statuses · Instant Book · Multi-Court · Pricing · Refunds · Payment</p>
+    <p class="version">v3.0 — Last updated Mar 2026</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI & UX</a>
+    <a href="booking-state-and-flows.html">Booking State</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+    <section class="section">
+      <h2>1. Core Philosophy</h2>
+      <ul>
+        <li><strong>Marketplace-driven</strong> — Venues and users transact via platform</li>
+        <li><strong>Payment-priority</strong> — Confirmed = paid; no pending confirmations</li>
+        <li><strong>Real-time</strong> — Slot availability and pricing reflect live state</li>
+        <li><strong>Fair refund</strong> — Tiered policy based on cancellation time</li>
+        <li><strong>Transparent</strong> — Price breakdown, GST, refund rules visible</li>
+        <li><strong>Premium</strong> — Quality experience; no hidden fees</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>2. Booking Statuses</h2>
+      <table>
+        <thead><tr><th>Status</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>pending</code></td><td>Order created; payment not yet completed</td></tr>
+          <tr><td><code>confirmed</code></td><td>Payment successful; booking active</td></tr>
+          <tr><td><code>cancelling</code></td><td>User requested cancel; refund in progress</td></tr>
+          <tr><td><code>cancelled</code></td><td>Booking cancelled; no refund</td></tr>
+          <tr><td><code>refunded</code></td><td>Cancelled with refund processed</td></tr>
+          <tr><td><code>completed</code></td><td>Slot time has passed; booking fulfilled</td></tr>
+        </tbody>
+      </table>
+
+      <div class="section">
+        <h2>Booking State Machine</h2>
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> pending: Booking created
+    pending --> confirmed: Payment verified (solo/full)
+    pending --> confirmed: ≥50% paid (split/open play)
+    pending --> cancelled: Slot conflict
+    confirmed --> cancelling: User cancels
+    cancelling --> refunded: BullMQ refund succeeded
+    cancelling --> cancelled: Refund failed
+    confirmed --> completed: Slot time passed
+    pending --> cancelled: Expired
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Instant Booking (3-tap)</h2>
+      <ol>
+        <li><strong>Select slot</strong> — Tap date + time slot on venue screen</li>
+        <li><strong>Confirm & pay</strong> — Summary + Razorpay Checkout in one step</li>
+        <li><strong>Done</strong> — Confirmation screen with booking ID</li>
+      </ol>
+      <p>No multi-step forms; minimal friction to convert.</p>
+    </section>
+
+    <section class="section">
+      <h2>4. Multi-Court (groupId)</h2>
+      <ul>
+        <li><strong>Atomic creation</strong> — Multiple slots booked as a single <code>groupId</code>; all-or-nothing</li>
+        <li><strong>Unified payment</strong> — One order for all courts; single transaction</li>
+        <li><strong>Conflict resolution</strong> — If any slot becomes unavailable, entire group fails or is retried</li>
+        <li><strong>Linked cancellation</strong> — Cancelling one court in a group may cancel all (or apply policy per-slot depending on config)</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>5. Pricing</h2>
+      <h3>FacilityPricingRule Types</h3>
+      <table>
+        <thead><tr><th>Type</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>TIME_BASED_SURCHARGE</code></td><td>Peak/off-peak by time of day</td></tr>
+          <tr><td><code>DAY_BASED_PRICING</code></td><td>Weekday vs weekend</td></tr>
+          <tr><td><code>PEAK_HOUR</code></td><td>Specific high-demand slots</td></tr>
+          <tr><td><code>EVENT_PRICING</code></td><td>Special events, tournaments</td></tr>
+          <tr><td><code>SEASON_PRICING</code></td><td>Seasonal rate adjustments</td></tr>
+        </tbody>
+      </table>
+      <h3>GST Calculation</h3>
+      <p><code>subtotal</code> → apply <code>gstRate</code> → <code>gstAmount</code> → <code>totalAmount = subtotal + gstAmount</code></p>
+    </section>
+
+    <section class="section">
+      <h2>6. Refund Policy</h2>
+      <table>
+        <thead><tr><th>Cancel Before</th><th>Refund %</th></tr></thead>
+        <tbody>
+          <tr><td>≥ 48 hours</td><td>100%</td></tr>
+          <tr><td>≥ 24 hours</td><td>75%</td></tr>
+          <tr><td>≥ 6 hours</td><td>50%</td></tr>
+          <tr><td>&lt; 6 hours</td><td>0%</td></tr>
+        </tbody>
+      </table>
+      <p><strong>BullMQ refund worker flow</strong>: On cancellation request → compute refund amount → enqueue refund job → Razorpay refund API → update booking to <code>refunded</code>.</p>
+    </section>
+
+    <section class="section">
+      <h2>7. Payment Flow</h2>
+      <ol>
+        <li>User confirms booking summary</li>
+        <li>Frontend calls <code>POST /api/payments/create-order</code></li>
+        <li>API creates Razorpay order; returns <code>orderId</code>, <code>amount</code>, <code>key</code></li>
+        <li>Razorpay Checkout opens (modal/redirect)</li>
+        <li>User pays via UPI/Card/Net Banking</li>
+        <li>Razorpay returns <code>payment_id</code> + <code>signature</code></li>
+        <li>Frontend calls <code>POST /api/payments/verify</code></li>
+        <li>API verifies, updates booking to <code>confirmed</code>, creates Payment record</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>8. Slot Competition</h2>
+      <p><strong>≥50% rule</strong>: For split/open play slots, if one party books ≥50% of the slot, the remainder can be offered to others. Otherwise, slot remains open until threshold is met.</p>
+    </section>
+
+    <section class="section">
+      <h2>9. Implementation Mapping</h2>
+      <table>
+        <thead><tr><th>Concept</th><th>Implementation</th></tr></thead>
+        <tbody>
+          <tr><td>Booking.status</td><td><code>pending</code> | <code>confirmed</code> | <code>cancelling</code> | <code>cancelled</code> | <code>refunded</code> | <code>completed</code></td></tr>
+          <tr><td>Multi-court</td><td><code>groupId</code> on Booking; atomic creation and linked cancellation</td></tr>
+          <tr><td>Pricing</td><td>FacilityPricingRule + FacilityCourt base price; computed at selection</td></tr>
+          <tr><td>GST</td><td>Stored on Booking; computed from subtotal × gstRate</td></tr>
+          <tr><td>Refund</td><td>BullMQ worker; Razorpay refund; policy lookup by cancel time</td></tr>
+          <tr><td>Payment</td><td>Razorpay Checkout; verify endpoint; Payment model linked to Booking</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>10. References</h2>
+      <ul>
+        <li><a href="payment-gateway-architecture.html">Payment Gateway Architecture</a></li>
+        <li><a href="ui-ux-requirements-summary.html">UI & UX Requirements</a></li>
+        <li><a href="navigation.html">Navigation</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,283 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Technical Specification — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .diagram { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 12px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>Technical Specification — Sportza</h1>
+    <p class="subtitle">Architecture · Stack · Data · Security · Deployment</p>
+    <p class="version">v1.4 — Last updated Apr 2026</p>
+  </header>
+
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI/UX Summary</a>
+    <a href="booking-state-and-flows.html">Booking State &amp; Flows</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+
+  <main class="container">
+    <section class="section">
+      <h2>1. Document Control</h2>
+      <table>
+        <tr><th>Item</th><th>Details</th></tr>
+        <tr><td>Document title</td><td>Technical Specification Document — Sportza</td></tr>
+        <tr><td>Version</td><td>1.3</td></tr>
+        <tr><td>Date</td><td>Mar 2026</td></tr>
+        <tr><td>Author</td><td>—</td></tr>
+        <tr><td>Related documents</td><td>Traceability; BRD; FRD; Data Model; Booking State &amp; Flows; Booking Flow UX; Navigation; Payment Gateway Architecture</td></tr>
+        <tr><td>Change log</td><td>v1.0 — Initial TSD. v1.1 — Payment gateway §5.3; refunds; booking states; open play no auto-cancel. v1.2 — Trainer Mode backend, tournament standings, Docker. v1.3 — Turborepo monorepo; apps/web (Vite, Tailwind, Auth0, TanStack Query); apps/api (Prisma, Auth0 JWT, Zod, ioredis, BullMQ, OpenAPI); packages; Docker Compose.</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>2. Purpose of the Document</h2>
+      <p>This Technical Specification Document (TSD) describes the <strong>technical design</strong> of <strong>Sportza</strong> (sports venue booking &amp; tournament platform). Intended for:</p>
+      <ul>
+        <li><strong>Development teams</strong> — Implementing the system (backend API, frontend app, real-time scoring)</li>
+        <li><strong>Architects and reviewers</strong> — Validating technology choices, data model, integration approach</li>
+        <li><strong>QA and DevOps</strong> — Test strategy, deployment, environment configuration</li>
+      </ul>
+      <p>The TSD bridges business and functional requirements (BRD, FRD) with implementation. It references them and adds technical detail.</p>
+    </section>
+
+    <section class="section">
+      <h2>3. Scope Overview</h2>
+      <h3>3.1 In-Scope</h3>
+      <ul>
+        <li><strong>Web application (React)</strong> — Mobile-first UI; bottom nav (Home | Bookings | Open Play | Stats | Profile); booking flow, open play, stats, leaderboard, venue/trainer discovery, ratings &amp; reviews</li>
+        <li><strong>REST API (Node.js/Express)</strong> — Auth, sports, venues, bookings, payments, open plays, matches, tournaments, batches, trainers, stats, reports</li>
+        <li><strong>Real-time scoring</strong> — Socket.io for live match score updates</li>
+        <li><strong>Payment integration</strong> — Razorpay; commission and net amounts per booking and batch payment</li>
+        <li><strong>Data persistence</strong> — MySQL (Prisma); booking state logic; monthly reports</li>
+        <li><strong>Authentication</strong> — Auth0 (Google SSO, Email OTP, Magic Link); role-based access</li>
+        <li><strong>Booking state engine</strong> — T-30 checkpoint; status matrix; payment-priority confirmation</li>
+        <li><strong>Scheduled jobs</strong> — Open-play confirmation at T-30</li>
+      </ul>
+      <h3>3.2 Out-of-Scope</h3>
+      <ul>
+        <li>Native iOS/Android apps (responsive web; API supports future native clients)</li>
+        <li>Detailed NFR document (separate deliverable)</li>
+        <li>Third-party venue management systems integration</li>
+        <li>Automated payout execution (reports only; payouts manual or future phase)</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>4. System Overview</h2>
+      <h3>4.1 Business Context</h3>
+      <p>The platform serves <strong>Players</strong>, <strong>Venue owners</strong>, <strong>Trainers</strong>, and <strong>Admin</strong>. Revenue model: platform commission % on venue bookings and batch fee payments; settled month-wise.</p>
+      <h3>4.2 High-Level System Capabilities</h3>
+      <table>
+        <tr><th>Capability</th><th>Description</th></tr>
+        <tr><td>Venue &amp; facility management</td><td>Multi-facility venues; per-sport, time-slot, weekday/weekend pricing; GST; add-ons</td></tr>
+        <tr><td>Booking &amp; payments</td><td>Full or split payment; add-on purchases; Razorpay; commission and venue net at create</td></tr>
+        <tr><td>Booking state logic</td><td>Solo/batch: immediate confirmation. Split/open play: T-30; ≥50% paid → Confirmed</td></tr>
+        <tr><td>Open play</td><td>Create from booking; T-30 confirmation (full + ≥50% paid)</td></tr>
+        <tr><td>Matches &amp; scoring</td><td>Multiple score types; Socket.io real-time; complete → aggregate player stats</td></tr>
+        <tr><td>Tournaments</td><td>Create, register teams, generate fixtures; format-specific standings</td></tr>
+        <tr><td>Batches</td><td>Trainer batches; fee schedules; commission; discovery; monthly player reviews</td></tr>
+        <tr><td>Trainer Mode</td><td>Dashboard, sessions, attendance, announcements, settlement</td></tr>
+        <tr><td>Discovery &amp; ratings</td><td>Venues/trainers/batches by sport, city; venue reviews anytime; trainer review after ≥1 month</td></tr>
+        <tr><td>Monetization &amp; reports</td><td>Monthly venue net, trainer net, platform commission</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. Architecture Overview</h2>
+      <h3>5.1 Logical Architecture</h3>
+      <div class="diagram">
+Client Layer (React SPA): Auth (Auth0), Home/Venues/Matches/Train/Profile, Booking Flow, Discovery &amp; Reviews, Socket.io Client
+         ↓ HTTPS / WSS
+API Layer (Node.js/Express): REST endpoints, Auth0 JWT &amp; Role Checks, Socket.io Server
+         ↓
+Business &amp; Data Layer: Booking State Engine, Open-Play Job, Payment/Commission Calc, Match Scoring, Prisma Models
+         ↓
+Data Store: MySQL
+      </div>
+      <p><strong>Layer summary:</strong> Client (UI, auth, booking, discovery, live match); API (REST, JWT, Socket.io); Business (state logic, commission, validation); Data Store (MySQL).</p>
+      <h3>5.2 Physical Architecture (Deployment)</h3>
+      <table>
+        <tr><th>Component</th><th>Technology</th><th>Notes</th></tr>
+        <tr><td>Frontend</td><td>React 18, Vite, Tailwind, TanStack Query, React Hook Form+Zod, Auth0 Web SDK, Razorpay Web SDK</td><td><code>apps/web</code>; pnpm --filter web dev</td></tr>
+        <tr><td>Backend</td><td>Node.js, Express 4, Prisma</td><td><code>apps/api</code>; single process</td></tr>
+        <tr><td>Real-time</td><td>Socket.io 4</td><td>Attached to HTTP server; CORS via CLIENT_ORIGIN</td></tr>
+        <tr><td>Database</td><td>MySQL</td><td>DATABASE_URL (Prisma)</td></tr>
+        <tr><td>Cache/Queue</td><td>Redis</td><td>ioredis; OTP, BullMQ</td></tr>
+        <tr><td>Payment</td><td>Razorpay SDK</td><td>Create order, verify/capture; Web SDK client</td></tr>
+        <tr><td>Auth</td><td>Auth0</td><td>JWT middleware; Google SSO, Email OTP, Magic Link</td></tr>
+      </table>
+      <p><strong>Monorepo:</strong> Turborepo (pnpm); <code>apps/web</code>, <code>apps/api</code>; <code>packages/tokens</code>, <code>packages/ui</code>, <code>packages/api-client</code>. <strong>Docker Compose:</strong> MySQL, Redis, API, Web. Run <code>docker-compose up</code>.</p>
+    </section>
+
+    <section class="section">
+      <h2>6. Technology Stack</h2>
+      <table>
+        <tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
+        <tr><td>Architecture</td><td>Turborepo (pnpm)</td><td>Monorepo: apps/web, apps/api; packages</td></tr>
+        <tr><td>UI</td><td>React 18, Vite, Tailwind CSS, React Router DOM</td><td>Components, build, styling, routing</td></tr>
+        <tr><td>UI</td><td>TanStack React Query, React Hook Form + Zod</td><td>Server state, form handling, validation</td></tr>
+        <tr><td>UI</td><td>Auth0 Web SDK, Razorpay Web SDK</td><td>Auth, payment UI</td></tr>
+        <tr><td>UI</td><td>@sportza/ui, @sportza/tokens, @sportza/api-client</td><td>Shared components, tokens, API hooks</td></tr>
+        <tr><td>Backend</td><td>Node.js, Express 4, Prisma</td><td>Runtime, REST API, MySQL ORM</td></tr>
+        <tr><td>Backend</td><td>Auth0 JWT, Zod, ioredis, BullMQ</td><td>JWT validation, request validation, Redis, jobs</td></tr>
+        <tr><td>Backend</td><td>OpenAPI, Razorpay SDK, Nodemailer, Multer+S3</td><td>API docs, payments, email, uploads</td></tr>
+        <tr><td>Backend</td><td>Socket.io</td><td>Real-time match scoring</td></tr>
+        <tr><td>Database</td><td>MySQL</td><td>Primary store</td></tr>
+        <tr><td>Cache/Queue</td><td>Redis</td><td>OTP storage, BullMQ</td></tr>
+        <tr><td>Deployment</td><td>Docker, Docker Compose</td><td>MySQL, Redis, API, Web</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>7. Data Architecture</h2>
+      <h3>7.1 Data Model Overview</h3>
+      <p>Relational model in MySQL via Prisma. Key relationships: User → Venues, Bookings; Venue → sportFacilities, sportRates, addOns; Booking → splitPayments, addOnPurchases; OpenPlay → Booking; Match → optional booking/tournament; Batch → trainer, players; TrainerProfile, BatchAnnouncement, VenueReview, TrainerReview, PlayerBatchReview, TournamentFixture. See <a href="data-model.html">data-model.html</a>.</p>
+      <h3>7.2 Key Entities</h3>
+      <table>
+        <tr><th>Entity</th><th>Purpose</th></tr>
+        <tr><td>User</td><td>Identity, role, Auth0; sports (trainer), associatedVenues</td></tr>
+        <tr><td>Sport</td><td>Formats, default pricing, statFields</td></tr>
+        <tr><td>Venue</td><td>sportFacilities, sportRates, gstRate, commissionPercent, addOns</td></tr>
+        <tr><td>Booking</td><td>venue, facilityId, sport, date, time, paymentType, commission, venueNet</td></tr>
+        <tr><td>OpenPlay</td><td>booking, formatName, players; T-30 confirmation</td></tr>
+        <tr><td>Match</td><td>booking or tournament, scoreType, teams, scores, playerStats</td></tr>
+        <tr><td>Batch</td><td>trainer, sportFees, commissionPercent, BatchPayment</td></tr>
+        <tr><td>TrainerProfile</td><td>Bio, certifications, achievements</td></tr>
+        <tr><td>BatchAnnouncement</td><td>Broadcast messages to batch players</td></tr>
+        <tr><td>VenueReview / TrainerReview</td><td>Rating 1–5, review text; trainer after ≥1 month</td></tr>
+        <tr><td>PlayerStats</td><td>Per-sport stats from completed matches</td></tr>
+      </table>
+      <h3>7.3 Data Versioning &amp; Audit</h3>
+      <p>No document versioning in MVP. <code>createdAt</code> (and <code>updatedAt</code> where implemented). No full audit log. Monthly reports derived from Booking/BatchPayment by date.</p>
+    </section>
+
+    <section class="section">
+      <h2>8. Functional Components</h2>
+      <table>
+        <tr><th>Component</th><th>Description</th></tr>
+        <tr><td>Auth</td><td>Auth0 (Google SSO, Email OTP, Magic Link); JWT middleware</td></tr>
+        <tr><td>Venues</td><td>List, get by id (averageRating, reviewCount), CRUD; check-availability, estimate</td></tr>
+        <tr><td>Bookings</td><td>Create (full/split, optional batch); add add-on; commission calc; status per BOOKING_STATE_AND_FLOWS</td></tr>
+        <tr><td>Payments</td><td>Create order, verify/capture; Razorpay; no commission on add-ons</td></tr>
+        <tr><td>Open plays</td><td>Create from booking; payment-priority (≥50% wins); T-30 job</td></tr>
+        <tr><td>Matches</td><td>Create from booking/tournament; start; scores by scoreType; complete → PlayerStats; Socket.io</td></tr>
+        <tr><td>Tournaments</td><td>CRUD; teams; fixtures; standings API</td></tr>
+        <tr><td>Batches</td><td>CRUD; discover; join; BatchPayment; monthly reviews; sessions; attendance; announcements</td></tr>
+        <tr><td>Trainer Mode</td><td>Dashboard; TrainerProfile; session/attendance; settlement</td></tr>
+        <tr><td>Stats</td><td>Player stats; leaderboard; match history; GET /api/stats/me/reviews</td></tr>
+        <tr><td>Reports</td><td>Monthly venue net, trainer net, platform commission; breakdown</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>9. Calculation &amp; Rule Engine</h2>
+      <h3>9.1 Calculation Flow</h3>
+      <p><strong>Booking:</strong> Resolve rate from Venue; apply min duration; subtotal = rate × hours; gstAmount = subtotal × gstRate; totalAmount = subtotal + gst + addOns; platformCommissionAmount = (subtotal + gst) × commissionPercent (add-ons excluded); venueNetAmount = totalAmount − commission.</p>
+      <p><strong>Batch payment:</strong> platformCommissionAmount = amount × batch.commissionPercent/100; trainerNetAmount = amount − commission.</p>
+      <p><strong>T-30:</strong> If paid % ≥ 50% (and open play full) → confirmed; else cancelled.</p>
+      <h3>9.2 Key Formulas</h3>
+      <table>
+        <tr><th>Formula</th><th>Description</th></tr>
+        <tr><td>subtotal</td><td>Σ (rate × hours); minus batch discount if applicable</td></tr>
+        <tr><td>gstAmount</td><td>subtotal × (venue.gstRate / 100)</td></tr>
+        <tr><td>totalAmount</td><td>subtotal + gstAmount + Σ addOn amounts</td></tr>
+        <tr><td>platformCommissionAmount</td><td>(subtotal + gstAmount) × (venue.commissionPercent / 100)</td></tr>
+        <tr><td>venueNetAmount</td><td>totalAmount − platformCommissionAmount</td></tr>
+        <tr><td>Paid % (split)</td><td>(Σ splitPayments paid) / totalAmount × 100</td></tr>
+      </table>
+      <h3>9.3 Validation Rules</h3>
+      <p>Booking: facilityId and facilityName required; slot available; split sums to total; batch discount only if batch.venue = booking.venue. Trainer review: only if PlayerBatchReview exists. Match score: validated by scoreType. Tournament: knockout requires team count power of 2.</p>
+    </section>
+
+    <section class="section">
+      <h2>10. User Management &amp; Security</h2>
+      <h3>10.1 Authentication &amp; Authorization</h3>
+      <p><strong>Authentication:</strong> Auth0 (Google SSO, Email OTP via Redis, Magic Link); JWT in <code>Authorization: Bearer</code>; Auth0 middleware verifies tokens.</p>
+      <p><strong>Authorization:</strong> Role-based (player, venue_owner, trainer, admin). Venue owner only own venues; trainer only own batches; tournament creator only own tournament.</p>
+      <h3>10.2 Data Security</h3>
+      <p>HTTPS in production; WSS for Socket.io. Secrets in env vars. Payment instruments not stored (Razorpay). Input validation via Zod; sanitization for XSS/injection.</p>
+    </section>
+
+    <section class="section">
+      <h2>11. Integration Specifications</h2>
+      <table>
+        <tr><th>Integration</th><th>Type</th><th>Purpose</th></tr>
+        <tr><td>Razorpay</td><td>REST API</td><td>Create order, verify/capture; UPI, Card, Net Banking via Checkout</td></tr>
+        <tr><td>Auth0</td><td>OAuth 2.0 / JWT</td><td>Google SSO, Email OTP, Magic Link; JWT for API</td></tr>
+        <tr><td>Email / SMS</td><td>SMTP (Nodemailer)</td><td>OTP, notifications</td></tr>
+        <tr><td>Socket.io</td><td>WebSocket</td><td>match:subscribe, match:score, match:status</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>12. Deployment &amp; Release Management</h2>
+      <p><strong>Build:</strong> <code>pnpm build</code> (Turborepo). Web: Vite; API: TypeScript build.</p>
+      <p><strong>Environment:</strong> PORT, DATABASE_URL, REDIS_URL, AUTH0_*, CLIENT_ORIGIN; Razorpay keys.</p>
+      <p><strong>Process:</strong> Single Node process for API + Socket.io; static client from apps/web/dist.</p>
+      <p><strong>Docker:</strong> docker-compose.yml — MySQL, Redis, API, Web. <code>docker-compose up</code> for full stack.</p>
+    </section>
+
+    <section class="section">
+      <h2>13. Risks &amp; Mitigations</h2>
+      <table>
+        <tr><th>Risk</th><th>Mitigation</th></tr>
+        <tr><td>Slot double-booked during payment</td><td>Check availability before order; conflict → return to slot selection</td></tr>
+        <tr><td>T-30 job delay or failure</td><td>Run at interval; GET process-confirmations for manual trigger; retry</td></tr>
+        <tr><td>Payment capture failure</td><td>Verify must complete; manual reconciliation from reports</td></tr>
+        <tr><td>Real-time score sync issues</td><td>Client re-subscribes on reconnect; REST fallback</td></tr>
+        <tr><td>Commission amount drift</td><td>Amounts stored at create; no retroactive change</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>14. Sign-Off</h2>
+      <p>This TSD is the technical baseline for Sportza MVP. Implementation aligns with TSD, BRD, FRD, Data Model, and Booking State &amp; Flows.</p>
+      <table>
+        <tr><th>Role</th><th>Name</th><th>Date</th><th>Signature</th></tr>
+        <tr><td>Technical Lead</td><td></td><td></td><td></td></tr>
+        <tr><td>Product Owner</td><td></td><td></td><td></td></tr>
+        <tr><td>QA Lead</td><td></td><td></td><td></td></tr>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
+

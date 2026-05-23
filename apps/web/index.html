@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Sportza — Book. Train. Track." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Sportza</title>
+    <!-- Razorpay checkout SDK — async so it never blocks page render -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+  </head>
+  <body class="font-sans bg-surface-secondary text-text-primary antialiased">
+    <div id="root"></div>
+    <!-- Separate overlay for pre-React / fatal errors — never touches #root so React's DOM stays intact -->
+    <div id="error-overlay" style="display:none;position:fixed;inset:0;z-index:99999;padding:20px;background:#0f172a;color:#f87171;font-family:monospace;font-size:13px;white-space:pre-wrap;overflow:auto;"></div>
+    <script>
+      var _errShown = false;
+      function _showError(label, msg) {
+        if (_errShown) return;
+        _errShown = true;
+        var ov = document.getElementById('error-overlay');
+        ov.textContent = label + '\n' + msg;
+        ov.style.display = 'block';
+      }
+      window.addEventListener('error', function(e) {
+        // Ignore removeChild / reconciliation noise that React itself triggers
+        if (e.message && e.message.indexOf('removeChild') !== -1) return;
+        _showError('JS ERROR:', e.message + '\n\n' + (e.filename||'') + ':' + e.lineno + '\n\n' + (e.error&&e.error.stack||''));
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        _showError('UNHANDLED PROMISE:', (e.reason && (e.reason.stack || e.reason.message || e.reason)) || 'unknown');
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Implementation Status — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-new { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'forest'});</script>
+</head>
+<body>
+  <header class="header">
+    <h1>Implementation Status — Sportza</h1>
+    <p class="subtitle">Backend · Frontend · Packages · Infrastructure</p>
+    <p class="version">v2.0 — Last updated Apr 28, 2026 · 53 models · 20 routes · 60+ pages</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI/UX Requirements</a>
+    <a href="booking-state-and-flows.html">Booking State & Flows</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+    <div class="section">
+      <h2>1. Backend (apps/api)</h2>
+      <h3>Route Files (20)</h3>
+      <table>
+        <thead>
+          <tr><th>Route File</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>auth</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>sports</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>venues</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>slots</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>bookings</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>payments</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>matches</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>stats</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>batches</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>trainers</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>open-plays</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>tournaments</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>reports</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>trainings</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>displays</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>peer-invites</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>matchmaking</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>notifications</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>schedules</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>public</td><td><span class="badge-new">New</span></td></tr>
+        </tbody>
+      </table>
+      <h3>Prisma Models (53)</h3>
+      <p>User, Otp, TrainerProfile, TrainerVenue, Sport, SportFormat, Venue, SportFacility, SportRate, VenueAddOn, Facility, Slot, FacilityPricingRule, VenueReview, TrainerReview, Booking, SplitPayment, BookingAddOn, BookingPayment, Refund, OpenPlay, OpenPlayPlayer, Match, MatchEvent, MatchConfirmation, Tournament, TournamentFixture, Batch, BatchMembership, BatchSession, SessionAttendance, BatchPayment, BatchAnnouncement, PlayerBatchReview, Activity, ActivityParticipant, Participation, SportEvent, PlayerActivityStats, PlayerStats, <strong>VenueDisplay</strong>, <strong>DisplayPairing</strong>, <strong>SportSkillRating</strong>, <strong>RatingHistory</strong>, <strong>PlayerConnection</strong>, <strong>PeerPlayInvite</strong>, <strong>Notification</strong>, <strong>RefreshToken</strong>, and related models.</p>
+      <p><em>VenueDisplay, DisplayPairing (Mar 2026): smart scoreboard pairing. SportSkillRating, RatingHistory, PlayerConnection, PeerPlayInvite, Notification, RefreshToken (Apr 2026): rating system, social graph, notifications, auth.</em></p>
+      <h3>Services</h3>
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Auth</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Booking</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Payment</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Notification</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>OpenPlay</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Tournament</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Stats</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>ELO Rating Engine</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>Player Connections</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>Notification Service</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>WhatsApp Bridge</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>Booking Helpers</td><td><span class="badge-new">New</span></td></tr>
+        </tbody>
+      </table>
+      <h3>Workers (4)</h3>
+      <table>
+        <thead><tr><th>Worker</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>emailWorker</td><td>OTP and magic-link delivery</td></tr>
+          <tr><td>refundWorker</td><td>Async Razorpay refund processing</td></tr>
+          <tr><td>ratingDriftWorker</td><td>Monthly 0.5% rating pull toward 1000</td></tr>
+          <tr><td>holdCleanupWorker</td><td>Expire stale booking holds from timed-out payments</td></tr>
+        </tbody>
+      </table>
+      <h3>Middleware</h3>
+      <table>
+        <thead>
+          <tr><th>Middleware</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Auth0 JWT</td><td>Authentication & authorization</td></tr>
+          <tr><td>Validate</td><td>Request validation</td></tr>
+          <tr><td>errorHandler</td><td>Centralized error handling</td></tr>
+        </tbody>
+      </table>
+      <h3>Infrastructure</h3>
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Redis</td><td>Caching & sessions</td></tr>
+          <tr><td>BullMQ</td><td>Job queues</td></tr>
+          <tr><td>S3 / Multer</td><td>File uploads</td></tr>
+          <tr><td>Nodemailer</td><td>Email notifications</td></tr>
+          <tr><td>OpenAPI / Swagger</td><td>API documentation</td></tr>
+          <tr><td>Socket.io</td><td>Real-time scoring rooms &amp; display pairing events</td></tr>
+          <tr><td>PM2</td><td>Process manager for production</td></tr>
+          <tr><td>Nginx</td><td>Reverse proxy with SSL termination</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>2. Frontend (apps/web)</h2>
+      <table>
+        <thead>
+          <tr><th>Domain</th><th>Pages</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Home / Auth</td><td>Home, Login, Register, Profile, ForgotPassword, ResetPassword</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Venues</td><td>VenueList, VenueDetail</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Booking</td><td>InstantBook, BookingHistory, BookingDetail</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Matches</td><td>MatchList, LiveMatch, ScoreMatch, Scoreboard, MatchSumula</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Open Play</td><td>OpenPlayList, OpenPlayDetail, CreateOpenPlay, ManageSession</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Stats</td><td>StatsOverview, SportAnalyticsHub, SportDashboard, MatchAnalytics, Leaderboard</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Trainer</td><td>TrainerDashboard, TrainerBatches, CreateBatch, BatchDetail, TrainerSessions, TrainerPayments, TrainerReviews, TrainerProfile, TrainerBatchCalendar, PlayerProgressCard</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Tournaments</td><td>TournamentList, TournamentDetail, CreateTournament, TournamentRegister, TournamentSpectator, EditTournament</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Venue Owner</td><td>VenueDashboard, VenueBookings, VenueFacilities, VenuePayments, MyVenues, CreateVenue, VenueDetailOwner, VenueCalendar, VenueSchedule, VenueDisplays, VenueReports, VenueBookingDetail</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Payments</td><td>PaymentHistory, PaymentReceipt</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Training</td><td>TrainingDiscovery, TrainingBatchDetail</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Display / Scoreboard</td><td>Scoreboard (/scoreboard/:matchId), PairDisplay (/display/pair/:token), ClaimDisplay (/claim/:token)</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Player</td><td>ProfileEdit, Settings, PlayerProfile, PublicPlayerProgress, Privacy</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>Matchmaking</td><td>MatchmakingSuggestions, PeerInvites</td><td><span class="badge-new">New</span></td></tr>
+          <tr><td>Notifications</td><td>Notifications</td><td><span class="badge-new">New</span></td></tr>
+        </tbody>
+      </table>
+      <p><strong>Total: 60+ pages</strong> — All Done.</p>
+    </div>
+
+    <div class="section">
+      <h2>3. Packages</h2>
+      <table>
+        <thead>
+          <tr><th>Package</th><th>Contents</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>tokens</td><td>colors, spacing, radii, fonts, shadows</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>ui</td><td>9 components: Button, Input, Modal, Card, Badge, Table, DatePicker, Rating, StatCard</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>api-client</td><td>50+ TanStack Query hooks (auth, venues, matchmaking, peer-invites, notifications, skill-ratings, etc.)</td><td><span class="badge-done">Done</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>4. Infrastructure</h2>
+      <ul>
+        <li><strong>Docker Compose</strong> — 4 services</li>
+        <li><strong>Dockerfiles</strong> — for apps and build</li>
+        <li><strong>pnpm-workspace</strong> — monorepo configuration</li>
+        <li><strong>turbo.json</strong> — Turborepo pipeline</li>
+        <li><strong>.env.example</strong> — environment template</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>5. Summary</h2>
+      <table>
+        <thead>
+          <tr><th>Area</th><th>Count</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Route files</td><td>20</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Prisma models</td><td>53</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Services / lib</td><td>12</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>BullMQ workers</td><td>4</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Pages</td><td>60+</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Scoring engines (frontend)</td><td>11</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Deploy scripts</td><td>3</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>UI components</td><td>9</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>API hooks</td><td>50+</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Docker services</td><td>4</td><td><span class="badge-done">Done</span></td></tr>
+        </tbody>
+      </table>
+      <p>All Done.</p>
+    </div>
+
+    <div class="section">
+      <h2>6. Recent Additions</h2><h3>Mar 2026</h3>
+      <table>
+        <thead><tr><th>Item</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td>Socket.io real-time scoring</td><td>room match:&lt;matchId&gt;; events match:score, match:status</td></tr>
+          <tr><td>Scoreboard page</td><td>/scoreboard/:matchId — TV-optimised, fullscreen</td></tr>
+          <tr><td>Display pairing</td><td>VenueDisplay + DisplayPairing; QR-based court-to-match link</td></tr>
+          <tr><td>Displays route</td><td>/api/displays/* — generate, claim, status</td></tr>
+          <tr><td>Monthly reports</td><td>/api/reports/venues, /api/reports/trainers, /api/reports/platform</td></tr>
+          <tr><td>Player batch reviews</td><td>/api/batches/:id/reviews; /api/stats/me/reviews</td></tr>
+          <tr><td>Sport FKs</td><td>sportId Int? added to 8 models for referential integrity</td></tr>
+        </tbody>
+      </table>
+      <h3>Apr 27–28, 2026</h3>
+      <table>
+        <thead><tr><th>Item</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td>ELO Rating System</td><td>7-factor engine; SportSkillRating + RatingHistory models; ratingDriftWorker</td></tr>
+          <tr><td>Peer Invites</td><td>Full API (5 endpoints) + PeerPlayInvite model + frontend pages</td></tr>
+          <tr><td>Matchmaking (high depth)</td><td>6 endpoints; rating-aware suggestions; PlayerConnection graph</td></tr>
+          <tr><td>Notification System</td><td>5 endpoints; Notification model; notificationService; Notifications.tsx</td></tr>
+          <tr><td>Frontend Scoring Engines</td><td>11 typed engines under apps/web/src/lib/scoring/</td></tr>
+          <tr><td>Auth: password reset + refresh tokens</td><td>forgot-password + reset-password + refresh; RefreshToken model</td></tr>
+          <tr><td>WhatsApp Bridge</td><td>Deep-link generator (payment, session, progress templates)</td></tr>
+          <tr><td>22+ new frontend pages</td><td>Player, Matchmaking, Notifications, Venue Owner, Tournaments, Trainer, Auth</td></tr>
+          <tr><td>Production deploy scripts</td><td>deploy/bootstrap.sh, setup-nginx.sh, deploy.sh</td></tr>
+        </tbody>
+      </table>
+      <h2>7. Next Steps</h2>
+      <ul>
+        <li><strong>Rating leaderboard</strong> — Public per-sport leaderboard using SportSkillRating</li>
+        <li><strong>Open play confirmation cron</strong> — BullMQ scheduled job for T-30 confirmations</li>
+        <li><strong>Push notifications</strong> — FCM/APNs for peer invite and booking alerts (Phase 2)</li>
+        <li><strong>Refresh token cleanup</strong> — Periodic pruning of expired RefreshToken rows</li>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>
+
+

@@ -1,0 +1,35 @@
+{
+  "name": "@sportza/tokens",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./tailwind": {
+      "import": "./dist/tailwind.mjs",
+      "require": "./dist/tailwind.js",
+      "types": "./dist/tailwind.d.ts"
+    }
+  },
+  "typesVersions": {
+  "*": {
+    "tailwind": ["dist/tailwind.d.ts"]
+  }
+},
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0"
+  }
+}

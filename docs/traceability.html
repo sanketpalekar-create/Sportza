@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Index & Traceability — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-new { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>Document Index & Traceability — Sportza</h1>
+    <p class="subtitle">Central document navigation and requirement traceability</p>
+    <p class="version">v1.6 — Last updated Apr 28, 2026</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI/UX Requirements</a>
+    <a href="booking-state-and-flows.html">Booking State & Flows</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+    <div class="section">
+      <h2>1. Monorepo Overview</h2>
+      <p><strong>Turborepo + pnpm</strong> monorepo structure:</p>
+      <ul>
+        <li><code>apps/web</code> — Frontend React app</li>
+        <li><code>apps/api</code> — Backend Node.js API</li>
+        <li><code>packages/tokens</code> — Design tokens</li>
+        <li><code>packages/ui</code> — Shared UI components</li>
+        <li><code>packages/api-client</code> — TanStack Query hooks</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>2. Document Index</h2>
+      <table>
+        <thead>
+          <tr><th>Document</th><th>Path</th><th>Version</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>BRD</td><td>brd.html</td><td>—</td><td>Business requirements</td></tr>
+          <tr><td>FRD</td><td>frd.html</td><td>—</td><td>Functional requirements</td></tr>
+          <tr><td>TSD</td><td>tsd.html</td><td>—</td><td>Technical specification</td></tr>
+          <tr><td>Data Model</td><td>data-model.html</td><td>v3.3</td><td>53 models; +SportSkillRating, RatingHistory, PlayerConnection, PeerPlayInvite, Notification, RefreshToken</td></tr>
+          <tr><td>Backend Architecture</td><td>—</td><td>—</td><td>API architecture</td></tr>
+          <tr><td>Architecture Refactor Proposal</td><td>—</td><td>—</td><td>Refactor planning</td></tr>
+          <tr><td>Schema Refactor Proposal</td><td>—</td><td>—</td><td>Schema changes</td></tr>
+          <tr><td>Schema Refactor Implementation</td><td>—</td><td>—</td><td>Schema implementation</td></tr>
+          <tr><td>Booking State & Flows</td><td>booking-state-and-flows.html</td><td>—</td><td>Booking lifecycle</td></tr>
+          <tr><td>Booking Flow UX</td><td>—</td><td>—</td><td>UX flows</td></tr>
+          <tr><td>Payment Gateway Architecture</td><td>payment-gateway-architecture.html</td><td>—</td><td>Payment integration</td></tr>
+          <tr><td>Navigation</td><td>navigation.html</td><td>—</td><td>App navigation</td></tr>
+          <tr><td>Traceability</td><td>traceability.html</td><td>v1.5</td><td>Doc index & requirement traceability</td></tr>
+          <tr><td>UI/UX Requirements Summary</td><td>ui-ux-requirements-summary.html</td><td>—</td><td>UI/UX specs</td></tr>
+          <tr><td>Implementation Status</td><td>implementation-status.html</td><td>v2.0</td><td>53 models, 20 routes, 60+ pages, 4 workers (Apr 2026)</td></tr>
+          <tr><td>Tournament Stages</td><td>—</td><td>—</td><td>Tournament flow</td></tr>
+          <tr><td>Venue Owner & Trainer Views</td><td>—</td><td>—</td><td>Admin dashboards</td></tr>
+          <tr><td>Sponsor Monetization</td><td>—</td><td>—</td><td>Monetization</td></tr>
+          <tr><td>Brand</td><td>—</td><td>—</td><td>Brand guidelines</td></tr>
+          <tr><td>Future Development</td><td>—</td><td>—</td><td>Roadmap</td></tr>
+          <tr><td>Deployment</td><td>—</td><td>—</td><td>Deploy guide</td></tr>
+          <tr><td>Product Master Plan</td><td>—</td><td>1.0</td><td>Portfolio-level plan: vision, personas, KPIs</td></tr>
+          <tr><td>Product Progress History</td><td>—</td><td>1.0</td><td>Management narrative of what is done vs planned</td></tr>
+          <tr><td>Feature Rollout &amp; Tracker</td><td>—</td><td>1.1</td><td>7-phase rollout plan + feature status tracker (peer invites, matchmaking, ratings updated Apr 2026)</td></tr>
+          <tr><td>Market Research &amp; Strategy</td><td>—</td><td>1.0</td><td>Market landscape, segments, GTM direction</td></tr>
+          <tr><td>Product Optimization Plan</td><td>—</td><td>1.0</td><td>Improvement priorities across product, UX, ops</td></tr>
+          <tr><td>Change Log (Last 30 Days)</td><td>CHANGE_LOG_LAST_30_DAYS.md</td><td>2.0</td><td>26 changes CL-001–CL-026 covering Mar 18 – Apr 28, 2026</td></tr>
+          <tr><td>ADR Change Rationale Log</td><td>ADR_CHANGE_RATIONALE_LOG.md</td><td>2.0</td><td>26 ADR-style entries ADR-001–ADR-026: Context, Decision, Consequences</td></tr>
+          <tr><td><strong>Rating System</strong></td><td>RATING_SYSTEM.md</td><td><strong>3.0</strong></td><td>ELO-based skill rating: 7-factor formula, confidence tiers, drift, data model</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>3. Traceability: BRD → FRD → TSD / Implementation</h2>
+      <table>
+        <thead>
+          <tr><th>BRD Capability</th><th>FRD Section</th><th>Implementation</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>User auth</td><td>FR-AUTH-*</td><td>auth routes, apps/web Login/Register</td></tr>
+          <tr><td>Venue booking</td><td>FR-VENUE-*, FR-BOOK-*</td><td>venues, slots, bookings routes; VenueList, InstantBook</td></tr>
+          <tr><td>Payments</td><td>FR-PAY-*</td><td>payments routes; PaymentHistory, PaymentReceipt</td></tr>
+          <tr><td>Matches</td><td>FR-MATCH-*</td><td>matches routes; MatchList, LiveMatch</td></tr>
+          <tr><td>Open play</td><td>FR-OPEN-*</td><td>open-plays routes; OpenPlayList, CreateOpenPlay</td></tr>
+          <tr><td>Training</td><td>FR-TRAIN-*</td><td>batches, trainings routes; TrainerBatches, TrainingDiscovery</td></tr>
+          <tr><td>Tournaments</td><td>FR-TOUR-*</td><td>tournaments routes; TournamentList, CreateTournament</td></tr>
+          <tr><td>Stats</td><td>FR-STATS-*</td><td>stats routes; StatsOverview, Leaderboard</td></tr>
+          <tr><td>Display / Scoreboard</td><td>—</td><td>displays route; /scoreboard/:matchId page; VenueDisplay + DisplayPairing</td></tr>
+          <tr><td>Matchmaking</td><td>—</td><td>matchmaking.ts (6 endpoints); MatchmakingSuggestions; PlayerConnection social graph</td></tr>
+          <tr><td>Peer Invites</td><td>—</td><td>peer-invites.ts; PeerPlayInvite model; PeerInvites.tsx</td></tr>
+          <tr><td>Notifications</td><td>—</td><td>notifications.ts; Notification model; Notifications.tsx</td></tr>
+          <tr><td>Skill Rating (ELO)</td><td>—</td><td>elo.ts; SportSkillRating + RatingHistory models; ratingDriftWorker</td></tr>
+          <tr><td>Auth (extended)</td><td>FR-AUTH-*</td><td>auth.ts; ForgotPassword.tsx; ResetPassword.tsx; RefreshToken model</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>4. Key Requirement IDs</h2>
+      <table>
+        <thead>
+          <tr><th>Prefix</th><th>Domain</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>FR-AUTH-*</td><td>Authentication</td></tr>
+          <tr><td>FR-VENUE-*</td><td>Venues</td></tr>
+          <tr><td>FR-BOOK-*</td><td>Bookings</td></tr>
+          <tr><td>FR-PAY-*</td><td>Payments</td></tr>
+          <tr><td>FR-MATCH-*</td><td>Matches</td></tr>
+          <tr><td>FR-OPEN-*</td><td>Open play</td></tr>
+          <tr><td>FR-TRAIN-*</td><td>Training</td></tr>
+          <tr><td>FR-TOUR-*</td><td>Tournaments</td></tr>
+          <tr><td>FR-STATS-*</td><td>Stats</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>5. Implementation Mapping</h2>
+      <table>
+        <thead>
+          <tr><th>Area</th><th>API Files (apps/api/src/routes)</th><th>Web Pages</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Auth</td><td>auth.ts</td><td>Login, Register, Profile</td></tr>
+          <tr><td>Venues</td><td>venues.ts, slots.ts</td><td>VenueList, VenueDetail</td></tr>
+          <tr><td>Bookings</td><td>bookings.ts</td><td>InstantBook, BookingHistory, BookingDetail</td></tr>
+          <tr><td>Payments</td><td>payments.ts</td><td>PaymentHistory, PaymentReceipt</td></tr>
+          <tr><td>Matches</td><td>matches.ts, stats.ts</td><td>MatchList, LiveMatch, StatsOverview</td></tr>
+          <tr><td>Open play</td><td>open-plays.ts</td><td>OpenPlayList, OpenPlayDetail, CreateOpenPlay</td></tr>
+          <tr><td>Training</td><td>batches.ts, trainings.ts</td><td>TrainerBatches, TrainingDiscovery</td></tr>
+          <tr><td>Tournaments</td><td>tournaments.ts</td><td>TournamentList, TournamentDetail, CreateTournament, TournamentRegister, TournamentSpectator</td></tr>
+          <tr><td>Matchmaking</td><td>matchmaking.ts, services/connections.ts</td><td>MatchmakingSuggestions</td></tr>
+          <tr><td>Peer Invites</td><td>peer-invites.ts</td><td>PeerInvites, PeerInviteSheet</td></tr>
+          <tr><td>Notifications</td><td>notifications.ts, services/notificationService.ts</td><td>Notifications</td></tr>
+          <tr><td>Skill Ratings</td><td>services/elo.ts, workers/ratingDriftWorker.ts</td><td>Rating history (via matchmaking routes)</td></tr>
+          <tr><td>Venue Owner (extended)</td><td>venues.ts, schedules.ts</td><td>MyVenues, CreateVenue, VenueCalendar, VenueSchedule, VenueDisplays, VenueReports</td></tr>
+          <tr><td>Player</td><td>auth.ts, stats.ts, public.ts</td><td>ProfileEdit, Settings, PlayerProfile, PublicPlayerProgress, Privacy</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>
+
+

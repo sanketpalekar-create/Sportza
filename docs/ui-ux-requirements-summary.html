@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI & UX Requirements — Sportza</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f0fdf4; color: #14532d; line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%); padding: 2rem 24px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .header h1 { margin: 0 0 0.5rem; font-size: 1.75rem; font-weight: 700; }
+    .header .subtitle { opacity: 0.95; font-size: 0.95rem; }
+    .header .version { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; }
+    .nav { max-width: 920px; margin: 0 auto; padding: 1rem 24px; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; border-bottom: 1px solid #bbf7d0; background: #fff; }
+    .nav a { color: #15803d; text-decoration: none; font-size: 0.875rem; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .nav a:hover { background: #dcfce7; color: #166534; }
+    .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .section { background: #fff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem 1.75rem; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section h2 { margin: 0 0 1rem; font-size: 1.25rem; font-weight: 600; color: #14532d; padding-bottom: 0.5rem; border-bottom: 2px solid #22c55e; }
+    .section h3 { font-size: 1.05rem; color: #166534; margin: 1rem 0 0.5rem; }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th, .section td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dcfce7; }
+    .section th { color: #15803d; font-weight: 600; background: #f0fdf4; }
+    .section ul, .section ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+    .section li { margin: 0.35rem 0; }
+    .section p { margin: 0 0 0.75rem; color: #14532d; }
+    .section a { color: #15803d; text-decoration: none; font-weight: 500; }
+    .section a:hover { text-decoration: underline; color: #166534; }
+    .section code { background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .badge-done { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-missing { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>UI & UX Requirements — Sportza</h1>
+    <p class="subtitle">Philosophy · Navigation · Booking Flow · Screens</p>
+    <p class="version">v2.1 — Last updated Mar 2026</p>
+  </header>
+  <nav class="nav">
+    <a href="brd.html">BRD</a>
+    <a href="frd.html">FRD</a>
+    <a href="tsd.html">TSD</a>
+    <a href="data-model.html">Data Model</a>
+    <a href="navigation.html">Navigation</a>
+    <a href="traceability.html">Traceability</a>
+    <a href="implementation-status.html">Implementation Status</a>
+    <a href="payment-gateway-architecture.html">Payment Gateway</a>
+    <a href="ui-ux-requirements-summary.html">UI & UX</a>
+    <a href="booking-state-and-flows.html">Booking State</a>
+    <a href="scoreboard-architecture.html">Scoreboard</a>
+  </nav>
+  <main class="container">
+    <section class="section">
+      <h2>1. Philosophy & Goals</h2>
+      <table>
+        <thead><tr><th>Area</th><th>Requirement</th></tr></thead>
+        <tbody>
+          <tr><td>Booking</td><td>Core revenue; must be fast and frictionless</td></tr>
+          <tr><td>Open Play + Stats</td><td>Retention drivers; accessible in 1–2 taps</td></tr>
+          <tr><td>User types</td><td>Player, Trainer, Venue Owner — each gets relevant flows</td></tr>
+          <tr><td>Flow feel</td><td>Mobile-first; minimal taps; clear CTAs</td></tr>
+          <tr><td>Trust</td><td>Transparent pricing; clear confirmation; receipts</td></tr>
+          <tr><td>Booking engine tone</td><td>Clean, professional, fast — not cluttered</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>2. Navigation</h2>
+      <p><strong>Single 5-tab BottomNav</strong>: Home, Venues, Matches, Train, Profile. Role-specific routes for trainers (<code>/trainer/*</code>) and venue owners (<code>/venue-owner/*</code>).</p>
+      <p><strong>When to hide nav</strong>: Login, registration, payment modal, full-screen booking confirmation.</p>
+      <h3>Secondary Patterns</h3>
+      <ul>
+        <li><strong>Stack</strong> — Standard push/pop</li>
+        <li><strong>Modal</strong> — Quick actions, filters</li>
+        <li><strong>Full-screen</strong> — Payment, confirmation</li>
+      </ul>
+      <h3>UX Behavior Rules</h3>
+      <ul>
+        <li>Max 3 taps to book</li>
+        <li>Logical back navigation</li>
+        <li>No deep nesting &gt;4 levels</li>
+        <li>Stats in 1 tap from Train tab</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>3. Booking Flow</h2>
+      <h3>Flow Structure</h3>
+      <p>Home → Venue → Slot → Summary → Payment → Confirmation</p>
+      <h3>Screens</h3>
+      <ul>
+        <li><strong>Venue Detail</strong> — Facilities, courts, pricing, availability</li>
+        <li><strong>Time Slot</strong> — Calendar + slot grid; multi-court selection</li>
+        <li><strong>Booking Summary</strong> — Slots, price breakdown, GST</li>
+        <li><strong>Payment Type</strong> — UPI / Card / Net Banking</li>
+        <li><strong>Payment</strong> — Razorpay Checkout integration</li>
+        <li><strong>Confirmation</strong> — Booking ID, receipt, next steps</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>4. Real-time & Feedback</h2>
+      <ul>
+        <li><strong>Real-time updates</strong>: Slot availability refreshes; competitor notifications</li>
+        <li><strong>Instant price updates</strong>: Surge/day-based pricing shown immediately</li>
+        <li><strong>Error handling</strong>: Clear messages; retry options; fallback UI</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>5. Application Screens</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Purpose</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Home</td><td>Dashboard, quick book, promotions</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Venues</td><td>List, search, filter, map</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Venue Detail</td><td>Info, courts, slots, book CTA</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Booking Flow</td><td>Slot → Summary → Payment</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Bookings</td><td>My bookings list and detail</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Matches</td><td>Match list, detail, stats</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Open Play</td><td>List, create, manage</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Tournaments</td><td>List, create, detail</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Train</td><td>Training programs, trainers</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Stats</td><td>Overview, analytics, sport/match</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Profile</td><td>Settings, payments, roles</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Login/Register</td><td>Auth0 integration</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Trainer Dashboard</td><td>Sessions, batches, reviews</td><td><span class="badge-done">Done</span></td></tr>
+          <tr><td>Venue Owner Dashboard</td><td>Bookings, facilities, payments</td><td><span class="badge-done">Done</span></td></tr>
+        </tbody>
+      </table>
+      <p><em>40+ screens total across modules.</em></p>
+    </section>
+
+    <section class="section">
+      <h2>6. Interaction Rules</h2>
+      <table>
+        <thead><tr><th>Rule</th><th>Implementation</th></tr></thead>
+        <tbody>
+          <tr><td>Tap targets</td><td>Min 44×44px; adequate spacing</td></tr>
+          <tr><td>Loading states</td><td>Skeleton / spinner; no blank screens</td></tr>
+          <tr><td>Empty states</td><td>Clear CTAs; helpful copy</td></tr>
+          <tr><td>Offline</td><td>Graceful degradation; cached data where possible</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>7. Future Development</h2>
+      <p>See <a href="../FUTURE_DEVELOPMENT.md">FUTURE_DEVELOPMENT.md</a> for planned enhancements (push notifications, dark mode, accessibility, etc.).</p>
+    </section>
+
+    <section class="section">
+      <h2>8. Related Documents</h2>
+      <ul>
+        <li><a href="navigation.html">Navigation</a> — Route structure and patterns</li>
+        <li><a href="booking-state-and-flows.html">Booking State & Flows</a> — Booking UX and statuses</li>
+        <li><a href="payment-gateway-architecture.html">Payment Gateway Architecture</a> — Payment screens</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

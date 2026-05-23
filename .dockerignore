@@ -1,0 +1,12 @@
+node_modules
+.turbo
+dist
+build
+.git
+.env
+.env.local
+*.md
+.cursor
+docs
+client
+server

@@ -1,0 +1,43 @@
+/* Instant Book Flow – animations and styles */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+#ib-css-loaded { display: none; }
+
+.instant-book-flow {
+  font-family: 'Sora', sans-serif;
+}
+
+.instant-book-flow .ib-card { transition: transform .18s ease, box-shadow .18s ease; }
+.instant-book-flow .ib-card:hover { transform: translateY(-2px); }
+.instant-book-flow .ib-card:active { transform: scale(.97); }
+.instant-book-flow .ib-btn-press { transition: transform .14s ease, opacity .14s ease; cursor: pointer; }
+.instant-book-flow .ib-btn-press:active { transform: scale(.96); opacity: .88; }
+.instant-book-flow .ib-sport-card { transition: all .2s cubic-bezier(.34,1.56,.64,1); }
+.instant-book-flow .ib-sport-card:active { transform: scale(.93); }
+.instant-book-flow .ib-slot-chip { transition: all .18s ease; }
+.instant-book-flow .ib-slot-chip:active { transform: scale(.94); }
+
+/* Legacy class names used by InstantBookFlow screens */
+.instant-book-flow .card { transition: transform .18s ease, box-shadow .18s ease; }
+.instant-book-flow .card:hover { transform: translateY(-2px); }
+.instant-book-flow .card:active { transform: scale(.97); }
+.instant-book-flow .btn-press { transition: transform .14s ease, opacity .14s ease; cursor: pointer; }
+.instant-book-flow .btn-press:active { transform: scale(.96); opacity: .88; }
+.instant-book-flow .sport-card { transition: all .2s cubic-bezier(.34,1.56,.64,1); }
+.instant-book-flow .sport-card:active { transform: scale(.93); }
+.instant-book-flow .slot-chip { transition: all .18s ease; }
+.instant-book-flow .slot-chip:active { transform: scale(.94); }
+
+/* Animation keyframes (used by InstantBookFlow) */
+@keyframes fadeUp { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
+@keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+@keyframes slideUp { from { opacity:0; transform:translateY(40px) } to { opacity:1; transform:translateY(0) } }
+@keyframes slideR { from { opacity:0; transform:translateX(32px) } to { opacity:1; transform:translateX(0) } }
+@keyframes slideL { from { opacity:0; transform:translateX(-32px) } to { opacity:1; transform:translateX(0) } }
+@keyframes scaleIn { from { opacity:0; transform:scale(.88) } to { opacity:1; transform:scale(1) } }
+@keyframes popIn { 0%{opacity:0;transform:scale(.5)} 72%{transform:scale(1.12)} 100%{opacity:1;transform:scale(1)} }
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes glowPulse { 0%,100%{box-shadow:0 0 20px rgba(59,130,246,.2)} 50%{box-shadow:0 0 40px rgba(59,130,246,.5)} }
+@keyframes ringPulse { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(1.7);opacity:0} }
+@keyframes float1 { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-12px) rotate(6deg)} }
+@keyframes confetti { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(60px) rotate(720deg);opacity:0} }
