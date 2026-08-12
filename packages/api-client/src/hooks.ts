@@ -195,18 +195,22 @@ export function useMarkAllRead() {
 
 // ─── Venues ─────────────────────────────────────────────
 
-export function useVenues(params?: {
-  page?: number;
-  limit?: number;
-  city?: string;
-  sport?: string;
-  activityId?: string;
-  category?: string;
-  ownerId?: number;
-}) {
+export function useVenues(
+  params?: {
+    page?: number;
+    limit?: number;
+    city?: string;
+    sport?: string;
+    activityId?: string;
+    category?: string;
+    ownerId?: number;
+  },
+  options?: { enabled?: boolean }
+) {
   return useQuery<any>({
     queryKey: ["venues", params],
     queryFn: () => apiClient.get("/venues", { params }).then((r) => r.data),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -1009,6 +1013,19 @@ export function useTournamentStandings(id: number) {
     queryFn: () => apiClient.get(`/tournaments/${id}/standings`).then((r) => r.data),
     enabled: !!id,
     staleTime: 0,
+  });
+}
+
+export async function exportTournamentExcel(tournamentId: number): Promise<Blob> {
+  const res = await apiClient.get(`/tournaments/${tournamentId}/export`, {
+    responseType: "blob",
+  });
+  return res.data as Blob;
+}
+
+export function useExportTournamentExcel(tournamentId: number) {
+  return useMutation({
+    mutationFn: () => exportTournamentExcel(tournamentId),
   });
 }
 

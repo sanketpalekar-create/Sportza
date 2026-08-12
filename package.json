@@ -9,6 +9,7 @@
     "dev:frontend": "pnpm --filter @sportza/web dev",
     "dev:all": "concurrently --names \"API,WEB\" --prefix-colors \"cyan,magenta\" \"pnpm dev:backend\" \"pnpm dev:frontend\"",
     "dev:share": "node scripts/share.js",
+    "repair:deps": "powershell -ExecutionPolicy Bypass -File scripts/repair-deps.ps1",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",

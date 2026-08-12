@@ -8,6 +8,7 @@ import { NotFoundError, BadRequestError, ForbiddenError } from "../lib/errors";
 import { upload, uploadFile, generateFileKey } from "../lib/storage";
 import { idParamSchema, paginationSchema } from "../schemas/common";
 import { upsertLocation } from "../lib/location";
+import { locationCityContains, locationStateContains } from "../lib/locationFilters";
 const router: Router = Router();
 
 // ─── Schemas ─────────────────────────────────────────────────────────────
@@ -324,8 +325,8 @@ router.get(
         const where: Record<string, unknown> = { isActive: true };
         if (city || state) {
           where.location = {
-            ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
-            ...(state ? { state: { equals: state, mode: "insensitive" } } : {}),
+            ...(city ? { city: locationCityContains(city) } : {}),
+            ...(state ? { state: locationStateContains(state) } : {}),
           };
         }
         const cityVenues = await prisma.venue.findMany({
@@ -365,7 +366,7 @@ router.get(
         req.query as unknown as z.infer<typeof venueListQuerySchema>;
       const where: Record<string, unknown> = {};
       if (!ownerId) where.isActive = true;
-      if (city) where.location = { city: { equals: city, mode: "insensitive" } };
+      if (city) where.location = { city: locationCityContains(city) };
       if (ownerId) where.ownerId = ownerId;
       const allVenues = await prisma.venue.findMany({
         where,

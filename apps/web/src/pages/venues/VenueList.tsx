@@ -262,7 +262,7 @@ export default function VenueList() {
 
   const isNearMeMode = !!nearMeCoords;
 
-  const { data: nearbyRes, isLoading: nearbyLoading } = useNearbyVenues(
+  const { data: nearbyRes, isLoading: nearbyLoading, isError: nearbyIsError } = useNearbyVenues(
     nearMeCoords
       ? {
           lat: nearMeCoords.lat,
@@ -303,14 +303,18 @@ export default function VenueList() {
     );
   }, [isNearMeMode, userLoc.lat, userLoc.lng]);
 
-  const { data: venuesRes, isLoading: venuesLoading, isError } = useVenues({
-    page,
-    limit,
-    sport: sportFilter || undefined,
-    city: !isNearMeMode && userLoc.city ? userLoc.city : undefined,
-  });
+  const { data: venuesRes, isLoading: venuesLoading, isError: venuesIsError } = useVenues(
+    {
+      page,
+      limit,
+      sport: sportFilter || undefined,
+      city: !isNearMeMode && userLoc.city ? userLoc.city : undefined,
+    },
+    { enabled: !isNearMeMode }
+  );
 
   const isLoading = isNearMeMode ? nearbyLoading : venuesLoading;
+  const isError = isNearMeMode ? nearbyIsError : venuesIsError;
 
   // Accumulate pages — reset when filter/sport changes
   useEffect(() => {

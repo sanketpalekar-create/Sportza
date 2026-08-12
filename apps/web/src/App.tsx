@@ -77,6 +77,7 @@ import MatchmakingSuggestions from "./pages/matchmaking/MatchmakingSuggestions";
 import PeerInvites from "./pages/matchmaking/PeerInvites";
 import PlayerProfile from "./pages/players/PlayerProfile";
 import PeerCompare from "./pages/players/PeerCompare";
+import FindPeers from "./pages/players/FindPeers";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminAccounts from "./pages/admin/AdminAccounts";
 import AdminOnboarding from "./pages/admin/AdminOnboarding";
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="/my-batches" element={<MyBatches />} />
           <Route path="/matchmaking" element={<MatchmakingSuggestions />} />
           <Route path="/matchmaking/invites" element={<PeerInvites />} />
+          <Route path="/find-peers" element={<FindPeers />} />
           <Route path="/players/:id" element={<PlayerProfile />} />
           <Route path="/players/:id/compare" element={<PeerCompare />} />
           <Route path="/profile" element={<Profile />} />

@@ -154,8 +154,8 @@ router.get(
       if (venueId) where.venueId = venueId;
       if (city || state) {
         where.location = {
-          ...(city  ? { city:  { contains: city,  mode: "insensitive" } } : {}),
-          ...(state ? { state: { contains: state, mode: "insensitive" } } : {}),
+          ...(city  ? { city:  { contains: city } } : {}),
+          ...(state ? { state: { contains: state } } : {}),
         };
       }
 

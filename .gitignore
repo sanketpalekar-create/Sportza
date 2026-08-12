@@ -16,3 +16,4 @@ coverage/
 *.tsbuildinfo
 .cursor/*.log
 cloudflared.exe
+apps/api/prisma/data/pickleball-community-phones.json

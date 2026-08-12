@@ -119,6 +119,8 @@ export {
   useTournaments,
   useTournament,
   useTournamentStandings,
+  exportTournamentExcel,
+  useExportTournamentExcel,
   useCreateTournament,
   useGenerateTournamentFixtures,
   useAdvanceTournamentStage,

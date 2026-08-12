@@ -28,7 +28,7 @@ router.get(
       const where: Record<string, unknown> = { isActive: true };
       if (sport) where.sport = sport;
       if (city) {
-        where.venue = { location: { city: { contains: city, mode: "insensitive" } } };
+        where.venue = { location: { city: { contains: city } } };
       }
 
       const [batches, total] = await Promise.all([

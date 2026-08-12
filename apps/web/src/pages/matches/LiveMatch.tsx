@@ -13,9 +13,11 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useMatch, useUpdateMatchScore, useAddMatchEvent,
   useUpdateMatchStatus, useCurrentUser,
+  apiClient,
 } from "@sportza/api-client";
 import {
   ChevronLeft, Tv2, Radio, Undo2, Trophy,
@@ -74,6 +76,7 @@ export default function LiveMatch() {
   const updateScore  = useUpdateMatchScore();
   const addEvent     = useAddMatchEvent();
   const updateStatus = useUpdateMatchStatus();
+  const qc           = useQueryClient();
 
   // ── Debounced score persistence ────────────────────────────────────────────
   // Rapid taps generate concurrent PUT requests that arrive out-of-order at the
@@ -83,10 +86,44 @@ export default function LiveMatch() {
   const pendingScoreRef  = useRef<unknown>(null);
   const scoreDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Flush any pending debounced write and clear timer on unmount
-  useEffect(() => () => {
-    if (scoreDebounceRef.current) clearTimeout(scoreDebounceRef.current);
-  }, []);
+  // Flush pending score on unmount (navigation away) so the DB always has the
+  // latest state even if the debounce timer hasn't fired yet.
+  useEffect(() => {
+    return () => {
+      if (scoreDebounceRef.current) clearTimeout(scoreDebounceRef.current);
+      if (pendingScoreRef.current !== null && matchId) {
+        // Fire-and-forget: axios request outlives the component
+        apiClient.put(`/matches/${matchId}/score`, { scores: pendingScoreRef.current });
+        pendingScoreRef.current = null;
+      }
+    };
+  }, [matchId]);
+
+  // Also flush on hard refresh / tab close via sendBeacon (no auth header needed
+  // for same-origin requests in modern browsers, but we include the token if available).
+  useEffect(() => {
+    if (!matchId) return;
+    const handleBeforeUnload = () => {
+      if (pendingScoreRef.current === null) return;
+      const base = apiClient.defaults.baseURL ?? "";
+      const token = (apiClient.defaults.headers.common as any)?.Authorization as string | undefined;
+      const blob = new Blob([JSON.stringify({ scores: pendingScoreRef.current })], {
+        type: "application/json",
+      });
+      // sendBeacon survives page unload; fall back to a sync XHR if unavailable
+      if (navigator.sendBeacon && !token) {
+        navigator.sendBeacon(`${base}/matches/${matchId}/score`, blob);
+      } else {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", `${base}/matches/${matchId}/score`, false); // sync
+        xhr.setRequestHeader("Content-Type", "application/json");
+        if (token) xhr.setRequestHeader("Authorization", token);
+        try { xhr.send(JSON.stringify({ scores: pendingScoreRef.current })); } catch { /* best-effort */ }
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [matchId]);
 
   function persistScore(state: unknown) {
     pendingScoreRef.current = state;
@@ -356,6 +393,16 @@ export default function LiveMatch() {
     flash(teamKey);
   }
 
+  /** Pre-start court setup — allowed before match is live. */
+  function applySetupEvent(teamKey: string, action: ScoringAction) {
+    if (!isCreator || !pbSetupGate) return;
+
+    const ab = teamKeyToAB(teamKeys, teamKey);
+    const newState = engine.applyEvent(engineState, ab, action.eventType);
+    setLiveScores(newState as Record<string, unknown>);
+    persistScore(newState);
+  }
+
   function handleUndo() {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
@@ -449,6 +496,11 @@ export default function LiveMatch() {
           onSuccess: () => {
             setShowEndModal(false);
             refetch();
+            // Invalidate the linked tournament so fixture score cards refresh
+            const tournamentId = (match as any)?.tournamentId;
+            if (tournamentId) {
+              qc.invalidateQueries({ queryKey: ["tournaments", tournamentId] });
+            }
           },
         }
       );
@@ -477,6 +529,9 @@ export default function LiveMatch() {
 
   const engineDone = engine.isComplete(engineState);
   const canScore   = isLive && isCreator && !engineDone;
+  // Court setup is interactive before the match goes live — the creator can
+  // configure positions/server, and "Lock setup & begin" starts the match.
+  const canSetup   = isCreator && !engineDone && pbSetupGate;
   const canTapScorePanels = canScore && !pbSetupGate;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -677,9 +732,9 @@ export default function LiveMatch() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      disabled={!canScore}
+                      disabled={!canSetup}
                       aria-pressed={Boolean(ack) && rightIdx === 0}
-                      onClick={() => scoreTeam(tk, pick(0))}
+                      onClick={() => applySetupEvent(tk, pick(0))}
                       className="flex-1 py-2.5"
                       style={starterBtnStyle(0)}
                     >
@@ -687,9 +742,9 @@ export default function LiveMatch() {
                     </button>
                     <button
                       type="button"
-                      disabled={!canScore}
+                      disabled={!canSetup}
                       aria-pressed={Boolean(ack) && rightIdx === 1}
-                      onClick={() => scoreTeam(tk, pick(1))}
+                      onClick={() => applySetupEvent(tk, pick(1))}
                       className="flex-1 py-2.5"
                       style={starterBtnStyle(1)}
                     >
@@ -712,9 +767,9 @@ export default function LiveMatch() {
                     <button
                       key={side}
                       type="button"
-                      disabled={!canScore}
+                      disabled={!canSetup}
                       onClick={() => {
-                        if (!isSelected) scoreTeam(tk, {
+                        if (!isSelected) applySetupEvent(tk, {
                           label: "Switch serve",
                           eventType: "switch_serve",
                           value: 0,
@@ -742,13 +797,23 @@ export default function LiveMatch() {
               && (engineState as PickleballServiceState | PickleballRallyState).setupBaselineAck?.B && (
               <button
                 type="button"
-                disabled={!canScore}
-                onClick={() => scoreTeam(teamKeys[0], {
-                  label: "Lock setup",
-                  eventType: "confirm_setup",
-                  value: 0,
-                  style: "primary",
-                })}
+                disabled={!canSetup || updateStatus.isPending || updateScore.isPending}
+                onClick={() => {
+                  if (scoreDebounceRef.current) clearTimeout(scoreDebounceRef.current);
+                  pendingScoreRef.current = null;
+
+                  const ab = teamKeyToAB(teamKeys, teamKeys[0]);
+                  const locked = engine.applyEvent(engineState, ab, "confirm_setup");
+                  setLiveScores(locked as Record<string, unknown>);
+
+                  updateScore.mutate({ id: matchId, scores: locked as any }, {
+                    onSuccess: () => {
+                      if (!isLive) {
+                        updateStatus.mutate({ id: matchId, status: "live" });
+                      }
+                    },
+                  });
+                }}
                 className="w-full py-3"
                 style={{
                   borderRadius: "12px",
@@ -759,7 +824,7 @@ export default function LiveMatch() {
                   border: "none",
                 }}
               >
-                Lock setup & begin serving
+                {updateStatus.isPending || updateScore.isPending ? "Starting…" : "Lock setup & begin serving"}
               </button>
             )}
           </div>
@@ -1006,8 +1071,8 @@ export default function LiveMatch() {
           </div>
         )}
 
-        {/* ── START MATCH button (if scheduled) ── */}
-        {isCreator && !isLive && !isDone && (
+        {/* ── START MATCH button (if scheduled, not pickleball setup) ── */}
+        {isCreator && !isLive && !isDone && !pbSetupGate && (
           <button
             onClick={() => updateStatus.mutate({ id: matchId, status: "live" })}
             disabled={updateStatus.isPending}

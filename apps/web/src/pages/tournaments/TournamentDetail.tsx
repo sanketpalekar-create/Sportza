@@ -16,13 +16,14 @@ import {
   useUpdateMatchScore,
   useAddCoOrganizer, useUpdateCoOrganizerRole, useRemoveCoOrganizer,
   useSaveGroupAssignments, useClearGroupAssignments,
+  useExportTournamentExcel,
 } from "@sportza/api-client";
 import {
   ChevronLeft, Trophy, Calendar, MapPin, Users,
   Zap, ChevronRight, CheckCircle, Play, Flag,
   Radio, Activity, Loader2, Plus, X, Megaphone,
   Star, Link2, Trash2, UserPlus, Share2, Pencil, AlertTriangle, UserCog, Shield, ChevronDown,
-  Shuffle, ArrowLeftRight,
+  Shuffle, ArrowLeftRight, FileSpreadsheet,
 } from "lucide-react";
 import { format } from "date-fns";
 import { getPlayerStatValue, getSportPlayerStatSchema } from "../../lib/tournament-player-stats";
@@ -50,21 +51,52 @@ const MATCH_STATUS_LABEL: Record<string, string> = {
   draft:       "PENDING",
 };
 
-// Flatten scoring-engine state to a simple {a, b} for display
+// Flatten scoring-engine state to a simple {a, b} for display.
+// Returns null when no meaningful score exists (avoids showing "0:0" on
+// matches whose DB scores field still holds the initial engine seed).
 function flatScore(scores: any): { a: string; b: string } | null {
   if (!scores || typeof scores !== "object") return null;
-  if (typeof scores.A === "number" && typeof scores.B === "number")
+  if (typeof scores.A === "number" && typeof scores.B === "number") {
+    if (scores.A === 0 && scores.B === 0) return null;
     return { a: String(scores.A), b: String(scores.B) };
+  }
   if (scores.scores) return flatScore(scores.scores);
-  if (scores.setsWon && typeof scores.setsWon === "object")
-    return { a: String(scores.setsWon.A ?? 0), b: String(scores.setsWon.B ?? 0) };
-  if (scores.gamesWon && typeof scores.gamesWon === "object")
-    return { a: String(scores.gamesWon.A ?? 0), b: String(scores.gamesWon.B ?? 0) };
-  if (typeof scores.team1 === "number" && typeof scores.team2 === "number")
+  if (scores.setsWon && typeof scores.setsWon === "object") {
+    const a = scores.setsWon.A ?? 0, b = scores.setsWon.B ?? 0;
+    if (a === 0 && b === 0) return null;
+    return { a: String(a), b: String(b) };
+  }
+  if (scores.gamesWon && typeof scores.gamesWon === "object") {
+    const a = scores.gamesWon.A ?? 0, b = scores.gamesWon.B ?? 0;
+    if (a === 0 && b === 0) return null;
+    return { a: String(a), b: String(b) };
+  }
+  if (typeof scores.team1 === "number" && typeof scores.team2 === "number") {
+    if (scores.team1 === 0 && scores.team2 === 0) return null;
     return { a: String(scores.team1), b: String(scores.team2) };
+  }
   const nums = Object.values(scores).filter((v) => typeof v === "number") as number[];
-  if (nums.length >= 2) return { a: String(nums[0]), b: String(nums[1]) };
+  if (nums.length >= 2 && (nums[0] !== 0 || nums[1] !== 0))
+    return { a: String(nums[0]), b: String(nums[1]) };
   return null;
+}
+
+// Derive winner from match data: prefer server winnerTeam, fall back to score comparison.
+// teamSide "A"/"B" corresponds to team1Ref/team2Ref in tournament fixtures.
+function deriveWinner(
+  matchWinnerTeam: string | null | undefined,
+  scoreA: string | null,
+  scoreB: string | null,
+  isDone: boolean,
+): { t1Wins: boolean; t2Wins: boolean } {
+  if (!isDone) return { t1Wins: false, t2Wins: false };
+  if (matchWinnerTeam === "A") return { t1Wins: true,  t2Wins: false };
+  if (matchWinnerTeam === "B") return { t1Wins: false, t2Wins: true  };
+  if (scoreA !== null && scoreB !== null) {
+    const a = parseInt(scoreA), b = parseInt(scoreB);
+    return { t1Wins: a > b, t2Wins: b > a };
+  }
+  return { t1Wins: false, t2Wins: false };
 }
 
 function knockoutRoundLabel(round: number, maxRound: number): string {
@@ -82,7 +114,7 @@ function isTBD(ref: any): boolean {
 function gameScores(scores: any): string | null {
   const games = scores?.completedGames ?? scores?.completedSets ?? null;
   if (!Array.isArray(games) || games.length === 0) return null;
-  return games.map((g: any) => `${g.A}-${g.B}`).join(", ");
+  return games.map((g: any) => `${g.A ?? 0}-${g.B ?? 0}`).join("  ·  ");
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -166,6 +198,7 @@ export default function TournamentDetail() {
   const removeCoOrg        = useRemoveCoOrganizer(tournamentId);
   const saveGroupAssign    = useSaveGroupAssignments(tournamentId);
   const clearGroupAssign   = useClearGroupAssignments(tournamentId);
+  const exportExcel        = useExportTournamentExcel(tournamentId);
 
   const tournament: any    = (tourRes as any)?.data ?? tourRes;
   const allStandings: any[]  = (standingsRes as any)?.data ?? standingsRes ?? [];
@@ -417,6 +450,29 @@ export default function TournamentDetail() {
     });
   }
 
+  async function handleExportExcel() {
+    setActionError("");
+    try {
+      const blob = await exportExcel.mutateAsync();
+      const slug = (tournament?.name ?? "tournament")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 40);
+      const date = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sportza-${slug || `tournament-${tournamentId}`}-${date}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message ?? err?.message ?? "Export failed");
+    }
+  }
+
   function handleAddPlayer() {
     setPlayerError("");
     if (!addPlayerTeam || !quickPickUserId) {
@@ -620,6 +676,24 @@ export default function TournamentDetail() {
               {shareDone ? "Link copied!" : "Share live scores"}
             </span>
           </button>
+
+          {isOrganizer && (
+            <button
+              onClick={handleExportExcel}
+              disabled={exportExcel.isPending}
+              className="flex items-center gap-2 px-3 py-2 w-full active:scale-[0.98] transition-transform disabled:opacity-50"
+              style={{ borderRadius: "10px", backgroundColor: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)" }}
+            >
+              {exportExcel.isPending ? (
+                <Loader2 style={{ width: "14px", height: "14px", color: "#22C55E" }} className="animate-spin" />
+              ) : (
+                <FileSpreadsheet style={{ width: "14px", height: "14px", color: "#22C55E" }} />
+              )}
+              <span style={{ fontSize: "12px", color: "#22C55E", fontWeight: "600", flex: 1, textAlign: "left" }}>
+                {exportExcel.isPending ? "Generating Excel…" : "Export Excel"}
+              </span>
+            </button>
+          )}
 
           {/* Registration share link (manager, when in registration status) */}
           {isManager && status === "registration" && (
@@ -1208,7 +1282,8 @@ export default function TournamentDetail() {
                 )}
 
                 {/* Group columns */}
-                <div className="p-3" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(groupCount, 4)}, 1fr)`, gap: "8px" }}>
+                <div className="p-3" style={{ overflowX: "auto" }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${groupCount}, minmax(140px, 1fr))`, gap: "8px", minWidth: "min-content" }}>
                   {Array.from({ length: groupCount }, (_, g) => {
                     const currentMap = groupEditMode ? localGroupMap : derivedGroupMap();
                     const groupTeams = teams.filter((t: any) => currentMap[t.name] === g);
@@ -1259,6 +1334,7 @@ export default function TournamentDetail() {
                       </div>
                     );
                   })}
+                </div>
                 </div>
 
                 {/* Reset to auto button (read-only mode, manager only) */}
@@ -2221,8 +2297,7 @@ function GrandFinalCard({ fixture, isTournamentActive, isStarting, onScore }: {
   const gameStr = gameScores(fixture.match?.scores);
   const scoreA  = score?.a ?? null;
   const scoreB  = score?.b ?? null;
-  const t1Wins  = isDone && scoreA !== null && scoreB !== null && parseInt(scoreA) > parseInt(scoreB);
-  const t2Wins  = isDone && scoreA !== null && scoreB !== null && parseInt(scoreB) > parseInt(scoreA);
+  const { t1Wins, t2Wins } = deriveWinner(fixture.match?.winnerTeam, scoreA, scoreB, isDone);
   const canScore = isTournamentActive && !isDone && !isLive && !fixture.matchId;
 
   const card = (
@@ -2256,17 +2331,25 @@ function GrandFinalCard({ fixture, isTournamentActive, isStarting, onScore }: {
         </div>
 
         {/* Score / VS */}
-        <div className="flex flex-col items-center justify-center px-4 gap-1" style={{ minWidth: "72px" }}>
-          {score ? (
+        <div className="flex flex-col items-center justify-center px-4 gap-1" style={{ minWidth: "80px" }}>
+          {gameStr ? (
+            <>
+              {gameStr.split("  ·  ").map((g, i) => (
+                <span key={i} style={{ fontSize: "15px", fontWeight: "900", color: "#E2E8F0", lineHeight: "1.3", letterSpacing: "0.5px" }}>{g}</span>
+              ))}
+              {isDone && <span style={{ fontSize: "9px", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "2px" }}>Final</span>}
+            </>
+          ) : score ? (
             <>
               <div className="flex items-center gap-2">
                 <span style={{ fontSize: "28px", fontWeight: "900", color: t1Wins ? "#F59E0B" : "#94A3B8", lineHeight: "1" }}>{scoreA}</span>
                 <span style={{ fontSize: "14px", color: "#334155", fontWeight: "700" }}>:</span>
                 <span style={{ fontSize: "28px", fontWeight: "900", color: t2Wins ? "#F59E0B" : "#94A3B8", lineHeight: "1" }}>{scoreB}</span>
               </div>
-              {gameStr && <span style={{ fontSize: "9px", color: "#475569", textAlign: "center" }}>{gameStr}</span>}
               {isDone && <span style={{ fontSize: "9px", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>Final</span>}
             </>
+          ) : isDone ? (
+            <span style={{ fontSize: "9px", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>Final</span>
           ) : (
             <span style={{ fontSize: "18px", fontWeight: "900", color: "#334155" }}>VS</span>
           )}
@@ -2540,8 +2623,7 @@ function BracketMatchCard({ fixture, isTournamentActive, isStarting, onScore, is
 
   const scoreA = score?.a ?? null;
   const scoreB = score?.b ?? null;
-  const t1Wins = isDone && scoreA !== null && scoreB !== null && parseInt(scoreA) > parseInt(scoreB);
-  const t2Wins = isDone && scoreA !== null && scoreB !== null && parseInt(scoreB) > parseInt(scoreA);
+  const { t1Wins, t2Wins } = deriveWinner(fixture.match?.winnerTeam, scoreA, scoreB, isDone);
 
   // Status pill
   const pill = isStarting
@@ -2599,7 +2681,8 @@ function BracketMatchCard({ fixture, isTournamentActive, isStarting, onScore, is
           fontWeight: t1Wins ? "700" : "500",
           color: t1Wins ? "#E2E8F0" : isTeamTBD ? "#334155" : t2Wins ? "#475569" : "#CBD5E1",
         }}>{t1Name}</span>
-        {score && (
+        {/* Per-game scores in team 1 row when only 1 game */}
+        {!gameStr && score && (
           <span style={{
             fontSize: "18px", fontWeight: "900", minWidth: "22px", textAlign: "right", lineHeight: "1",
             color: t1Wins ? "#22C55E" : isLive ? "#F59E0B" : "#64748B",
@@ -2618,7 +2701,7 @@ function BracketMatchCard({ fixture, isTournamentActive, isStarting, onScore, is
           fontWeight: t2Wins ? "700" : "500",
           color: t2Wins ? "#E2E8F0" : isTeamTBD ? "#334155" : t1Wins ? "#475569" : "#CBD5E1",
         }}>{t2Name}</span>
-        {score && (
+        {!gameStr && score && (
           <span style={{
             fontSize: "18px", fontWeight: "900", minWidth: "22px", textAlign: "right", lineHeight: "1",
             color: t2Wins ? "#22C55E" : isLive ? "#F59E0B" : "#64748B",
@@ -2626,10 +2709,11 @@ function BracketMatchCard({ fixture, isTournamentActive, isStarting, onScore, is
         )}
       </div>
 
-      {/* Per-game breakdown */}
+      {/* Per-game breakdown — shown below when available (e.g. 11-7  ·  11-4) */}
       {gameStr && (
-        <div style={{ padding: "3px 12px 5px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <span style={{ fontSize: "10px", color: "#F59E0B", opacity: 0.7, letterSpacing: "0.3px" }}>{gameStr}</span>
+        <div style={{ padding: "4px 12px 6px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: "11px", color: isDone ? "#22C55E" : "#F59E0B", fontWeight: "700", letterSpacing: "0.5px" }}>{gameStr}</span>
+          {isDone && <span style={{ fontSize: "9px", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>Final</span>}
         </div>
       )}
     </div>
@@ -2878,6 +2962,9 @@ function FixtureCard({
 
   const score   = flatScore(fixture.match?.scores);
   const gameStr = gameScores(fixture.match?.scores);
+  const scoreA  = score?.a ?? null;
+  const scoreB  = score?.b ?? null;
+  const { t1Wins, t2Wins } = deriveWinner(fixture.match?.winnerTeam, scoreA, scoreB, isDone);
 
   const canScore = isTournamentActive && !isByeCard && !isTeamTBD && !isDone;
 
@@ -2893,22 +2980,21 @@ function FixtureCard({
   const cardContent = (
     <>
       <div className="flex-1 min-w-0">
-        <p className="text-white truncate" style={{ fontSize: "13px", fontWeight: "700" }}>{t1Name}</p>
+        <p className="truncate" style={{ fontSize: "13px", fontWeight: "700", color: t1Wins ? "#22C55E" : "white" }}>{t1Name}</p>
       </div>
 
       <div className="flex flex-col items-center mx-2 flex-shrink-0">
-        {score ? (
+        {gameStr ? (
+          <p style={{ fontSize: "11px", fontWeight: "800", color: isLive ? "#22C55E" : isDone ? "#94A3B8" : "#3B82F6", textAlign: "center", whiteSpace: "nowrap" }}>
+            {gameStr}
+          </p>
+        ) : score ? (
           <p style={{ fontSize: "16px", fontWeight: "800", color: isLive ? "#22C55E" : "#3B82F6" }}>
             {score.a} : {score.b}
           </p>
         ) : (
           <p style={{ fontSize: "12px", color: "#475569", fontWeight: "500" }}>
             {isByeCard ? "BYE" : "vs"}
-          </p>
-        )}
-        {gameStr && (
-          <p style={{ fontSize: "9px", color: "#475569", marginTop: "1px", textAlign: "center", letterSpacing: "0.3px" }}>
-            {gameStr}
           </p>
         )}
         <div className="mt-0.5 px-1.5 py-0.5 flex items-center gap-1"
@@ -2927,7 +3013,7 @@ function FixtureCard({
       </div>
 
       <div className="flex-1 min-w-0 text-right">
-        <p className="text-white truncate" style={{ fontSize: "13px", fontWeight: "700" }}>{t2Name}</p>
+        <p className="truncate" style={{ fontSize: "13px", fontWeight: "700", color: t2Wins ? "#22C55E" : "white" }}>{t2Name}</p>
       </div>
 
       {/* Sumula link for completed matches */}

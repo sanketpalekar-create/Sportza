@@ -5,7 +5,9 @@ import prisma from "../lib/prisma";
 import { registry } from "../lib/openapi";
 import { validate } from "../middleware/validate";
 import { jwtCheck, attachUser, requireAuth } from "../middleware/auth";
-import { NotFoundError, BadRequestError, ConflictError } from "../lib/errors";
+import { NotFoundError, BadRequestError, ConflictError, ForbiddenError } from "../lib/errors";
+import { computeStandings, computeTournamentStandings } from "../lib/tournament-standings";
+import { buildTournamentWorkbook, tournamentExportFilename } from "../services/tournamentExport";
 import { idParamSchema, paginationSchema } from "../schemas/common";
 import {
   createEmptyStatsForSport,
@@ -249,123 +251,6 @@ function knockoutBracket(
   return result;
 }
 
-// ─── Standings helpers ────────────────────────────────────────────────────────
-
-/**
- * Recursively flatten any scoring-engine state to a simple { a, b } pair.
- * Handles: simple { A, B }, nested { scores/gamesWon/setsWon: { A, B } },
- * and legacy { team1, team2 } / { teamA, teamB } keys.
- */
-function flatEngineScore(raw: unknown): { a: number; b: number } | null {
-  if (!raw || typeof raw !== "object") return null;
-  const s = raw as Record<string, any>;
-  if (typeof s.A === "number" && typeof s.B === "number") return { a: s.A, b: s.B };
-  if (s.scores)   return flatEngineScore(s.scores);
-  if (s.gamesWon) return flatEngineScore(s.gamesWon);
-  if (s.setsWon)  return flatEngineScore(s.setsWon);
-  if (typeof s.team1 === "number" && typeof s.team2 === "number") return { a: s.team1, b: s.team2 };
-  if (typeof s.teamA === "number" && typeof s.teamB === "number") return { a: s.teamA, b: s.teamB };
-  return null;
-}
-
-/** Extract the sum of actual points scored across all games/sets in a match.
- *  For multi-game sports (pickleball, tennis, badminton) this sums every
- *  completed game/set score.  Falls back to the flat top-level score for
- *  single-game formats. */
-function extractAccumulatedPoints(raw: unknown): { a: number; b: number } | null {
-  if (!raw || typeof raw !== "object") return null;
-  const s = raw as Record<string, any>;
-
-  const games = s.completedGames ?? s.completedSets;
-  if (Array.isArray(games) && games.length > 0) {
-    let a = 0, b = 0;
-    for (const g of games) {
-      if (typeof g.A === "number") a += g.A;
-      if (typeof g.B === "number") b += g.B;
-    }
-    return { a, b };
-  }
-
-  if (s.scores) return extractAccumulatedPoints(s.scores);
-  return flatEngineScore(raw);
-}
-
-function computeStandings(
-  matches: Array<Record<string, any>>,
-  teams:   Array<Record<string, any>>
-): Array<{ team: string; played: number; won: number; drawn: number; lost: number; points: number; pointsFor: number; pointsAgainst: number; pointDiff: number }> {
-  const standings: Record<string, { played: number; won: number; drawn: number; lost: number; points: number; pointsFor: number; pointsAgainst: number }> = {};
-
-  for (const t of teams) {
-    const name = (t?.name as string) || "";
-    if (!name) continue;
-    standings[name] = { played: 0, won: 0, drawn: 0, lost: 0, points: 0, pointsFor: 0, pointsAgainst: 0 };
-  }
-
-  for (const m of matches) {
-    if (m.status !== "completed") continue;
-
-    const teamsData = (m.teams as Record<string, any>) ?? {};
-
-    // Resolve team names — support A/B keys (tournament fixture matches) and legacy team1/team2
-    const t1 =
-      teamsData.A?.name   ?? (typeof teamsData.A    === "string" ? teamsData.A    : null) ??
-      teamsData.team1?.name ?? (typeof teamsData.team1 === "string" ? teamsData.team1 : null) ?? "";
-    const t2 =
-      teamsData.B?.name   ?? (typeof teamsData.B    === "string" ? teamsData.B    : null) ??
-      teamsData.team2?.name ?? (typeof teamsData.team2 === "string" ? teamsData.team2 : null) ?? "";
-
-    if (!t1 || !t2) continue;
-
-    if (!standings[t1]) standings[t1] = { played: 0, won: 0, drawn: 0, lost: 0, points: 0, pointsFor: 0, pointsAgainst: 0 };
-    if (!standings[t2]) standings[t2] = { played: 0, won: 0, drawn: 0, lost: 0, points: 0, pointsFor: 0, pointsAgainst: 0 };
-
-    standings[t1].played++;
-    standings[t2].played++;
-
-    // Accumulate actual points scored (sum of all game/set scores)
-    const accum = extractAccumulatedPoints(m.scores);
-    if (accum) {
-      standings[t1].pointsFor      += accum.a;
-      standings[t1].pointsAgainst  += accum.b;
-      standings[t2].pointsFor      += accum.b;
-      standings[t2].pointsAgainst  += accum.a;
-    }
-
-    // Prefer explicit winnerTeam set by the LiveMatch end-match flow
-    const winner = m.winnerTeam as string | undefined;
-    if (winner === "A") {
-      standings[t1].won++;   standings[t2].lost++;  standings[t1].points += 3;
-    } else if (winner === "B") {
-      standings[t2].won++;   standings[t1].lost++;  standings[t2].points += 3;
-    } else {
-      // Fallback: derive from engine-state scores
-      const flat   = flatEngineScore(m.scores);
-      const scoreA = flat?.a ?? 0;
-      const scoreB = flat?.b ?? 0;
-      if (scoreA > scoreB) {
-        standings[t1].won++;   standings[t2].lost++;  standings[t1].points += 3;
-      } else if (scoreB > scoreA) {
-        standings[t2].won++;   standings[t1].lost++;  standings[t2].points += 3;
-      } else {
-        standings[t1].drawn++; standings[t2].drawn++; standings[t1].points += 1; standings[t2].points += 1;
-      }
-    }
-  }
-
-  return Object.entries(standings)
-    .map(([team, s]) => ({
-      team,
-      ...s,
-      pointDiff: s.pointsFor - s.pointsAgainst,
-    }))
-    .sort((a, b) =>
-      b.points    - a.points    ||
-      b.pointDiff - a.pointDiff ||
-      (b.won - b.lost) - (a.won - a.lost)
-    );
-}
-
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // GET / — List
@@ -397,6 +282,43 @@ router.get(
 
       res.json({ success: true, data: items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } });
     } catch (err) { next(err); }
+  }
+);
+
+// GET /:id/export — Excel workbook (organizers only)
+router.get(
+  "/:id/export",
+  jwtCheck,
+  attachUser,
+  requireAuth,
+  validate({ params: idParamSchema }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params as unknown as z.infer<typeof idParamSchema>;
+      const userId = req.userId!;
+
+      const tournament = await prisma.tournament.findUnique({
+        where: { id },
+        include: { coOrganizers: true },
+      });
+      if (!tournament) throw new NotFoundError("Tournament");
+      if (!isOrganizerOrCoOrg(tournament, userId)) {
+        throw new ForbiddenError("Only tournament organizers can export data");
+      }
+
+      const workbook = await buildTournamentWorkbook(id);
+      const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+      const filename = tournamentExportFilename(tournament);
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
   }
 );
 
@@ -486,7 +408,17 @@ router.put(
       if (body.startDate   !== undefined) updateData.startDate   = new Date(body.startDate);
       if (body.endDate     !== undefined) updateData.endDate     = new Date(body.endDate);
       if (body.stages      !== undefined) updateData.stages      = body.stages as object;
-      if (body.teams       !== undefined) updateData.teams       = body.teams  as object;
+      if (body.teams !== undefined) {
+        // Merge incoming teams with existing to preserve metadata (groupIndex, playerNames, players).
+        // The edit form only sends { name } objects; we keep all extra fields from the existing team record.
+        const existingTeams = (tournament.teams as any[]) ?? [];
+        const existingMap   = new Map(existingTeams.map((t: any) => [t.name, t]));
+        const merged = (body.teams as any[]).map((incoming: any) => {
+          const existing = existingMap.get(incoming.name);
+          return existing ? { ...existing, ...incoming } : incoming;
+        });
+        updateData.teams = merged as object;
+      }
 
       const updated = await prisma.tournament.update({ where: { id }, data: updateData });
       res.json({ success: true, data: updated });
@@ -857,71 +789,13 @@ router.get(
       });
       if (!tournament) throw new NotFoundError("Tournament");
 
-      const teams  = (tournament.teams as Array<Record<string, any>>) ?? [];
-      const stages = (tournament.stages as Array<Record<string, any>>) ?? [];
-
-      // For multi-stage tournaments, determine champion & runner-up from the
-      // final (last) knockout stage, then rank the rest by group-stage-only points.
-      let champion:   string | null = null;
-      let runnerUp:   string | null = null;
-
-      if (stages.length >= 2) {
-        const lastStageNum = stages.length; // stageOrder is 1-based
-        const finalFixtures = (tournament.fixtures as any[]).filter(
-          (f: any) => f.stage === lastStageNum
-        );
-        // Find the decisive completed fixture (the one with a match that has a winner)
-        for (const f of finalFixtures) {
-          if (!f.matchId) continue;
-          const m = (tournament.matches as any[]).find((m: any) => m.id === f.matchId);
-          if (m?.winnerTeam) {
-            const t1 = (f.team1Ref as any)?.name as string | undefined;
-            const t2 = (f.team2Ref as any)?.name as string | undefined;
-            if (t1 && t2) {
-              champion = m.winnerTeam === "A" ? t1 : t2;
-              runnerUp = m.winnerTeam === "A" ? t2 : t1;
-            }
-            break;
-          }
-        }
-
-        if (champion && runnerUp) {
-          // Compute group-stage-only standings (exclude final-stage matches)
-          const finalMatchIds = new Set(finalFixtures.map((f: any) => f.matchId).filter(Boolean));
-          const groupMatches  = (tournament.matches as any[]).filter(
-            (m: any) => !finalMatchIds.has(m.id)
-          );
-          const groupStandings = computeStandings(groupMatches, teams);
-
-          // Pin champion at 1st, runner-up at 2nd, rest in group-stage order (excluding the two finalists)
-          const rest = groupStandings.filter(
-            (s: any) => s.team !== champion && s.team !== runnerUp
-          );
-          const makeRow = (
-            base: any,
-            team: string,
-            placement: "champion" | "runner_up"
-          ) => ({
-            ...(base ?? { team, played: 0, won: 0, drawn: 0, lost: 0, points: 0, pointsFor: 0, pointsAgainst: 0, pointDiff: 0 }),
-            team,
-            placement,
-          });
-
-          const champRow    = groupStandings.find((s: any) => s.team === champion);
-          const runnerRow   = groupStandings.find((s: any) => s.team === runnerUp);
-
-          const data = [
-            makeRow(champRow,  champion, "champion"),
-            makeRow(runnerRow, runnerUp, "runner_up"),
-            ...rest,
-          ];
-          return res.json({ success: true, data });
-        }
-      }
-
-      // Fallback: standard aggregate standings (single-stage or no final winner yet)
-      const sorted = computeStandings(tournament.matches as any[], teams);
-      res.json({ success: true, data: sorted });
+      const data = computeTournamentStandings({
+        teams: (tournament.teams as Array<Record<string, any>>) ?? [],
+        stages: (tournament.stages as Array<Record<string, any>>) ?? [],
+        matches: tournament.matches as Array<Record<string, any>>,
+        fixtures: tournament.fixtures as Array<Record<string, any>>,
+      });
+      res.json({ success: true, data });
     } catch (err) { next(err); }
   }
 );
@@ -1175,6 +1049,24 @@ router.post(
       const t1Name = (fixture.team1Ref as any)?.name ?? "Team A";
       const t2Name = (fixture.team2Ref as any)?.name ?? "Team B";
 
+      // Look up playerNames from the tournament's teams JSON so they appear in court setup
+      const allTeams = (tournament.teams as any[]) ?? [];
+      const t1Data = allTeams.find((t: any) => t.name === t1Name);
+      const t2Data = allTeams.find((t: any) => t.name === t2Name);
+
+      // Fallback: derive player names by splitting team name on & or / when the lookup misses
+      const splitTeamName = (n: string): [string, string] => {
+        const sep = n.includes("&") ? "&" : "/";
+        const parts = n.split(sep).map((s) => s.trim());
+        return [parts[0] ?? n, parts[1] ?? parts[0] ?? n];
+      };
+      const t1PlayerNames: string[] = (t1Data?.playerNames?.length ?? 0) > 0
+        ? t1Data!.playerNames
+        : splitTeamName(t1Name);
+      const t2PlayerNames: string[] = (t2Data?.playerNames?.length ?? 0) > 0
+        ? t2Data!.playerNames
+        : splitTeamName(t2Name);
+
       // Build a rich metadata label for the fixture round/stage
       const stageLabel = fixture.stage    ? `Stage ${fixture.stage}`    : "";
       const groupLabel  = fixture.groupIndex != null ? `Group ${String.fromCharCode(65 + fixture.groupIndex)}` : "";
@@ -1204,10 +1096,17 @@ router.post(
           sportName:     sport.name,
           formatName:    formatLabel || "Tournament Match",
           tournamentId,
-          teams:         { A: { name: t1Name }, B: { name: t2Name } },
+          teams:         {
+            A: { name: t1Name, playerNames: t1PlayerNames },
+            B: { name: t2Name, playerNames: t2PlayerNames },
+          },
           scoreType:     finalScoreType,
           // Seed a minimal config block so normaliseState picks up doubles correctly
-          scores:        { config: { sport: finalScoreType, doubles } },
+          scores:        {
+            config:           { sport: finalScoreType, doubles },
+            setupComplete:    doubles ? false : true,
+            setupBaselineAck: doubles ? { A: false, B: false } : { A: true, B: true },
+          },
           matchDate:     new Date(),
           status:        "scheduled",
           createdById:   userId,
