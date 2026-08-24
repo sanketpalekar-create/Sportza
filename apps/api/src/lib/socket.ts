@@ -96,8 +96,17 @@ export function initSocket(httpServer: HttpServer): SocketServer {
 }
 
 export function getIO(): SocketServer {
-  if (!io) throw new Error("Socket.io not initialised. Call initSocket first.");
+  if (!io) {
+    throw new Error(
+      "Socket.io not initialised. Call initSocket first (local/Docker only; not available on Vercel)."
+    );
+  }
   return io;
+}
+
+/** True when Socket.io was attached to an HTTP server (local / Docker). */
+export function isSocketReady(): boolean {
+  return io !== null;
 }
 
 // Emit to all clients in a live match room

@@ -1,35 +1,27 @@
 /**
- * Hold Cleanup Worker
- * Runs on a repeating schedule to expire booking holds that have passed their TTL.
+ * Hold Cleanup Worker (local / Docker only)
+ * On Vercel, use Cron → GET /api/cron/hold-cleanup instead.
  */
 import { Worker, Queue } from "bullmq";
 import redis from "../lib/redis";
-import prisma from "../lib/prisma";
+import { expireBookingHolds } from "../services/holdCleanup";
 
 const QUEUE_NAME = "hold-cleanup";
-const REPEAT_EVERY_MS = 60_000; // every 60 seconds
+const REPEAT_EVERY_MS = 60_000;
 
-const holdCleanupQueue = new Queue(QUEUE_NAME, { connection: redis });
-
-const holdCleanupWorker = new Worker(
-  QUEUE_NAME,
-  async () => {
-    const now = new Date();
-    const result = await prisma.bookingHold.deleteMany({
-      where: { expiresAt: { lt: now } },
-    });
-    if (result.count > 0) {
-      console.log(`[hold-cleanup] Expired ${result.count} hold(s)`);
-    }
-  },
-  { connection: redis }
-);
-
-holdCleanupWorker.on("failed", (job, err) => {
-  console.error(`[hold-cleanup] Job ${job?.id} failed:`, err);
-});
+let holdCleanupQueue: Queue | null = null;
+let holdCleanupWorker: Worker | null = null;
 
 export async function startHoldCleanupSchedule() {
+  holdCleanupQueue = new Queue(QUEUE_NAME, { connection: redis });
+  holdCleanupWorker = new Worker(QUEUE_NAME, async () => expireBookingHolds(), {
+    connection: redis,
+  });
+
+  holdCleanupWorker.on("failed", (job, err) => {
+    console.error(`[hold-cleanup] Job ${job?.id} failed:`, err);
+  });
+
   await holdCleanupQueue.upsertJobScheduler(
     "hold-cleanup-repeat",
     { every: REPEAT_EVERY_MS },

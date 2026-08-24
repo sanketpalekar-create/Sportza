@@ -11,6 +11,7 @@
     "dev:share": "node scripts/share.js",
     "repair:deps": "powershell -ExecutionPolicy Bypass -File scripts/repair-deps.ps1",
     "build": "turbo build",
+    "build:vercel": "pnpm --filter @sportza/api exec prisma generate && pnpm turbo build --filter=@sportza/web",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "db:generate": "pnpm --filter @sportza/api exec prisma generate",

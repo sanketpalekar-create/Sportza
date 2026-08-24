@@ -1,0 +1,8 @@
+# Keep deploys lean — large local / tool artifacts
+.cursor
+cloudflared.exe
+*.log
+apps/mobile
+client
+coverage
+**/node_modules/.cache

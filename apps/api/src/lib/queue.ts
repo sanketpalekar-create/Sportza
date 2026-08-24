@@ -1,8 +1,9 @@
-import { Queue, Worker, Job } from "bullmq";
+import { Queue } from "bullmq";
 import redis from "./redis";
 
 const connection = { connection: redis };
 
+/** Enqueue only — workers are not started on Vercel (see docs/VERCEL.md). */
 export const emailQueue = new Queue("email", connection);
 export const refundQueue = new Queue("refund", connection);
 

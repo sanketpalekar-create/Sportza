@@ -1,10 +1,17 @@
 import Redis from "ioredis";
+import { isServerless } from "./runtime";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
+/**
+ * On Vercel / serverless, use lazyConnect so cold starts do not open Redis
+ * until the first command. Upstash Redis works with the standard redis:// URL.
+ * BullMQ workers must NOT be started in serverless (see lib/runtime.ts).
+ */
 export const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  lazyConnect: isServerless,
   retryStrategy: (times) => Math.min(times * 50, 2000),
 });
 
