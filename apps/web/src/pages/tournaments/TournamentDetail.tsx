@@ -2299,6 +2299,8 @@ function GrandFinalCard({ fixture, isTournamentActive, isStarting, onScore }: {
   const scoreB  = score?.b ?? null;
   const { t1Wins, t2Wins } = deriveWinner(fixture.match?.winnerTeam, scoreA, scoreB, isDone);
   const canScore = isTournamentActive && !isDone && !isLive && !fixture.matchId;
+  // Re-open LiveMatch for scheduled matches that already have a matchId (e.g. left mid court-setup).
+  const canReopen = !!fixture.matchId && !isDone;
 
   const card = (
     <div style={{
@@ -2365,7 +2367,7 @@ function GrandFinalCard({ fixture, isTournamentActive, isStarting, onScore }: {
         </div>
       </div>
 
-      {/* Footer: start / live indicator */}
+      {/* Footer: start / continue setup / live indicator */}
       {(canScore || isStarting) && (
         <div className="flex items-center justify-center gap-1 py-2"
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)", backgroundColor: "rgba(245,158,11,0.07)" }}>
@@ -2378,10 +2380,17 @@ function GrandFinalCard({ fixture, isTournamentActive, isStarting, onScore }: {
           }
         </div>
       )}
+      {canReopen && !isLive && !isDone && !isStarting && (
+        <div className="flex items-center justify-center gap-1 py-2"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", backgroundColor: "rgba(59,130,246,0.08)" }}>
+          <Activity style={{ width: "10px", height: "10px", color: "#93C5FD" }} />
+          <span style={{ fontSize: "10px", fontWeight: "700", color: "#93C5FD" }}>Tap to continue setup</span>
+        </div>
+      )}
     </div>
   );
 
-  if (canScore || (fixture.matchId && (isLive || isDone))) {
+  if (canScore || canReopen || (fixture.matchId && (isLive || isDone))) {
     return (
       <button onClick={onScore} disabled={isStarting} className="w-full active:scale-[0.98] transition-transform" style={{ textAlign: "left" }}>
         {card}

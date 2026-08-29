@@ -31,10 +31,15 @@ export interface PickleballRallyState {
    */
   servingScoreIndex: { A: number; B: number };
   winner: "A" | "B" | null;
-  /** Doubles: false until both teams have picked their right-side player */
+  /** Doubles: false until skip or lock setup */
   setupComplete: boolean;
   /** Doubles: tracks which teams have confirmed their starting right player */
   setupBaselineAck: { A: boolean; B: boolean };
+  /**
+   * True after Lock setup (configure path). False after Skip — no player/side
+   * labels in the serve line.
+   */
+  trackPositions: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -74,13 +79,13 @@ function maybeEndGame(s: PickleballRallyState): void {
     return;
   }
 
-  // Start next game — loser of previous game serves first, positions reset.
+  // Start next game — loser of previous game serves first; positions carry over.
+  // Initial setup only — never re-gate between games (skip or configure).
   s.currentGame = { A: 0, B: 0 };
   s.servingScoreIndex = { A: 0, B: 0 };
   const loser: "A" | "B" = gameWinner === "A" ? "B" : "A";
   s.serving = loser;
-  s.setupBaselineAck = s.config.doubles ? { A: false, B: false } : { A: true, B: true };
-  s.setupComplete = !s.config.doubles;
+  s.setupComplete = true;
   s.currentServerPlayerIndex = deriveServerPlayerIndex(s, loser);
 }
 
@@ -115,6 +120,7 @@ export const pickleballRallyEngine: ScoringEngine<PickleballRallyState> = {
       winner: null,
       setupComplete: !doubles,
       setupBaselineAck: doubles ? { A: false, B: false } : { A: true, B: true },
+      trackPositions: false,
     };
     return state;
   },
@@ -148,7 +154,14 @@ export const pickleballRallyEngine: ScoringEngine<PickleballRallyState> = {
         return state;
       }
       s.setupComplete = true;
+      s.trackPositions = true;
       s.currentServerPlayerIndex = deriveServerPlayerIndex(s, s.serving);
+      return s;
+    }
+
+    if (eventType === "skip_setup") {
+      s.setupComplete = true;
+      s.trackPositions = false;
       return s;
     }
 
@@ -216,16 +229,21 @@ export const pickleballRallyEngine: ScoringEngine<PickleballRallyState> = {
     const ssi = state.servingScoreIndex ?? { A: 0, B: 0 };
     const srv = state.serving;
     const recv: "A" | "B" = srv === "A" ? "B" : "A";
-    // Doubles: physical sides only swap on service wins → use servingScoreIndex.
-    // Singles: no partner; serve side is always even=right / odd=left by total score.
-    const court = state.config.doubles
-      ? (ssi[srv] % 2 === 0 ? "right" : "left")
-      : (state.currentGame[srv] % 2 === 0 ? "right" : "left");
     const teamLabel = teamNames[srv] ?? srv;
 
-    const secondary = state.config.doubles
-      ? `${state.currentGame[srv]}–${state.currentGame[recv]} · P${state.currentServerPlayerIndex + 1} (${court}) · ${teamLabel}`
-      : `${state.currentGame[srv]}–${state.currentGame[recv]} · ${teamLabel} (${court})`;
+    let secondary: string;
+    if (state.config.doubles && !state.trackPositions) {
+      secondary = `${state.currentGame[srv]}–${state.currentGame[recv]} · ${teamLabel}`;
+    } else {
+      // Doubles: physical sides only swap on service wins → use servingScoreIndex.
+      // Singles: no partner; serve side is always even=right / odd=left by total score.
+      const court = state.config.doubles
+        ? (ssi[srv] % 2 === 0 ? "right" : "left")
+        : (state.currentGame[srv] % 2 === 0 ? "right" : "left");
+      secondary = state.config.doubles
+        ? `${state.currentGame[srv]}–${state.currentGame[recv]} · P${state.currentServerPlayerIndex + 1} (${court}) · ${teamLabel}`
+        : `${state.currentGame[srv]}–${state.currentGame[recv]} · ${teamLabel} (${court})`;
+    }
 
     return {
       primary: `${state.currentGame.A} – ${state.currentGame.B}`,
@@ -335,6 +353,11 @@ export function formatPickleballRallyServeLine(
   const ssi = state.servingScoreIndex ?? { A: 0, B: 0 };
   const srv = state.serving;
   const recv: "A" | "B" = srv === "A" ? "B" : "A";
+
+  // Skip path: scores + serving team only — no player name or side.
+  if (state.config.doubles && !state.trackPositions) {
+    return `${state.currentGame[srv]}–${state.currentGame[recv]} · ${names[srv] ?? srv}`;
+  }
 
   const srvInfo  = readyServer(ssi[srv],  state.starterRightPlayerIndex[srv],  srv  === "A" ? playersA : playersB);
   const recvInfo = readyServer(ssi[recv], state.starterRightPlayerIndex[recv], recv === "A" ? playersA : playersB);

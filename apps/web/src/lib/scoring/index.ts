@@ -86,6 +86,10 @@ export function normaliseState(rawScores: unknown, scoreType: string): unknown {
           ? { A: true, B: true }
           : (doubles ? { A: false, B: false } : { A: true, B: true });
       }
+      // Legacy locked matches tracked positions; unfinished/new doubles stay untracked until lock/skip.
+      if (typeof pb.trackPositions !== "boolean") {
+        pb.trackPositions = pb.setupComplete === true;
+      }
       // Back-fill flag for states saved before this field existed.
       // Default true (active) only when both scores are still 0 — safe for fresh games.
       if (typeof pb.openingZeroZeroTwoActive !== "boolean") {
@@ -106,6 +110,9 @@ export function normaliseState(rawScores: unknown, scoreType: string): unknown {
         (pb as { setupBaselineAck: { A: boolean; B: boolean } }).setupBaselineAck = pb.setupComplete
           ? { A: true, B: true }
           : { A: false, B: false };
+      }
+      if (typeof pb.trackPositions !== "boolean") {
+        pb.trackPositions = pb.setupComplete === true;
       }
       if (typeof pb.starterRightPlayerIndex !== "object" || !pb.starterRightPlayerIndex) {
         (pb as { starterRightPlayerIndex: { A: 0 | 1; B: 0 | 1 } }).starterRightPlayerIndex = { A: 0, B: 0 };

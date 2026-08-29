@@ -1106,6 +1106,7 @@ router.post(
             config:           { sport: finalScoreType, doubles },
             setupComplete:    doubles ? false : true,
             setupBaselineAck: doubles ? { A: false, B: false } : { A: true, B: true },
+            trackPositions:   false,
           },
           matchDate:     new Date(),
           status:        "scheduled",

@@ -403,6 +403,38 @@ export default function LiveMatch() {
     persistScore(newState);
   }
 
+  /** Skip or lock court setup, then go live if still scheduled. */
+  function finalizeCourtSetup(eventType: "skip_setup" | "confirm_setup") {
+    if (!isCreator || !pbSetupGate) return;
+    if (scoreDebounceRef.current) clearTimeout(scoreDebounceRef.current);
+    pendingScoreRef.current = null;
+
+    const ab = teamKeyToAB(teamKeys, teamKeys[0]);
+    const next = engine.applyEvent(engineState, ab, eventType);
+    setLiveScores(next as Record<string, unknown>);
+
+    updateScore.mutate({ id: matchId, scores: next as any }, {
+      onSuccess: () => {
+        if (!isLive) {
+          updateStatus.mutate({ id: matchId, status: "live" });
+        }
+      },
+    });
+  }
+
+  function handleLiveMatchBack() {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    const tid = match?.tournamentId;
+    if (typeof tid === "number" && tid > 0) {
+      navigate(`/tournaments/${tid}`);
+      return;
+    }
+    navigate("/matches");
+  }
+
   function handleUndo() {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
@@ -544,7 +576,7 @@ export default function LiveMatch() {
         style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
       >
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleLiveMatchBack}
           className="flex items-center justify-center flex-shrink-0"
           style={{ width: "36px", height: "36px", borderRadius: "10px", backgroundColor: "#1E293B" }}
         >
@@ -673,7 +705,7 @@ export default function LiveMatch() {
           </div>
         )}
 
-        {/* ── Pickleball service: court baseline before first rally ── */}
+        {/* ── Pickleball doubles: court setup (configure or skip) ── */}
         {pbSetupGate && (
           <div
             className="p-4 space-y-4"
@@ -683,10 +715,19 @@ export default function LiveMatch() {
               border: "1px solid rgba(245,158,11,0.35)",
             }}
           >
-            <p className="text-[#F59E0B]" style={{ fontSize: "13px", fontWeight: "800" }}>Court setup (Game {((engineState as PickleballServiceState | PickleballRallyState).completedGames?.length ?? 0) + 1})</p>
-            <p className="text-[#94A3B8]" style={{ fontSize: "12px" }}>
-              At <strong className="text-white">0–0</strong>, who starts on the <strong className="text-white">right</strong> (even) side for each team? Tap one player per team, then lock setup.
+            <p className="text-[#F59E0B]" style={{ fontSize: "13px", fontWeight: "800" }}>
+              Court setup (Game {((engineState as PickleballServiceState | PickleballRallyState).completedGames?.length ?? 0) + 1})
             </p>
+            <p className="text-[#94A3B8]" style={{ fontSize: "12px" }}>
+              Optionally pick who starts on the <strong className="text-white">right</strong> for each team and who serves first, then lock.
+              Or <strong className="text-white">skip</strong> to start without tracking player sides
+              {scoreType === "pickleball_service" ? " — the 0–0–2 / 0–0–1 scoreline still applies." : "."}
+            </p>
+            {!isCreator && (
+              <p className="text-[#94A3B8]" style={{ fontSize: "12px", fontWeight: "600" }}>
+                Waiting for the scorer to start…
+              </p>
+            )}
             {(["A", "B"] as const).map((side, idx) => {
               const tk = teamKeys[idx];
               const names = teamPlayerNames[tk];
@@ -793,40 +834,44 @@ export default function LiveMatch() {
               </div>
             </div>
 
-            {(engineState as PickleballServiceState | PickleballRallyState).setupBaselineAck?.A
-              && (engineState as PickleballServiceState | PickleballRallyState).setupBaselineAck?.B && (
+            <div className="space-y-2">
               <button
                 type="button"
                 disabled={!canSetup || updateStatus.isPending || updateScore.isPending}
-                onClick={() => {
-                  if (scoreDebounceRef.current) clearTimeout(scoreDebounceRef.current);
-                  pendingScoreRef.current = null;
-
-                  const ab = teamKeyToAB(teamKeys, teamKeys[0]);
-                  const locked = engine.applyEvent(engineState, ab, "confirm_setup");
-                  setLiveScores(locked as Record<string, unknown>);
-
-                  updateScore.mutate({ id: matchId, scores: locked as any }, {
-                    onSuccess: () => {
-                      if (!isLive) {
-                        updateStatus.mutate({ id: matchId, status: "live" });
-                      }
-                    },
-                  });
-                }}
+                onClick={() => finalizeCourtSetup("skip_setup")}
                 className="w-full py-3"
                 style={{
                   borderRadius: "12px",
-                  background: "linear-gradient(135deg,#F59E0B,#D97706)",
+                  backgroundColor: "rgba(59,130,246,0.2)",
+                  border: "1px solid rgba(59,130,246,0.5)",
                   fontSize: "15px",
                   fontWeight: "800",
-                  color: "#fff",
-                  border: "none",
+                  color: "#93C5FD",
                 }}
               >
-                {updateStatus.isPending || updateScore.isPending ? "Starting…" : "Lock setup & begin serving"}
+                {updateStatus.isPending || updateScore.isPending ? "Starting…" : "Skip and start match"}
               </button>
-            )}
+
+              {(engineState as PickleballServiceState | PickleballRallyState).setupBaselineAck?.A
+                && (engineState as PickleballServiceState | PickleballRallyState).setupBaselineAck?.B && (
+                <button
+                  type="button"
+                  disabled={!canSetup || updateStatus.isPending || updateScore.isPending}
+                  onClick={() => finalizeCourtSetup("confirm_setup")}
+                  className="w-full py-3"
+                  style={{
+                    borderRadius: "12px",
+                    background: "linear-gradient(135deg,#F59E0B,#D97706)",
+                    fontSize: "15px",
+                    fontWeight: "800",
+                    color: "#fff",
+                    border: "none",
+                  }}
+                >
+                  {updateStatus.isPending || updateScore.isPending ? "Starting…" : "Lock setup & begin serving"}
+                </button>
+              )}
+            </div>
           </div>
         )}
 

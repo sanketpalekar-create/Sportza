@@ -309,7 +309,7 @@ async function main() {
       sportName: "pickleball",
       name: "Doubles (service)",
       playersPerTeam: 2,
-      desc: "Side-out scoring, Server 1/2 — court setup on live screen before first point.",
+      desc: "Side-out scoring, Server 1/2 — optional court setup on live screen, or skip without player-side tracking.",
       config: { scoringType: "pickleball_service", pointsToWin: 11 },
     },
     {
@@ -344,7 +344,7 @@ async function main() {
     { name: "Doubles", description: "Rally scoring — every rally wins a point for the side you tap." },
     {
       name: "Doubles (service)",
-      description: "Side-out scoring, Server 1/2 — court setup on live screen before first point.",
+      description: "Side-out scoring, Server 1/2 — optional court setup on live screen, or skip without player-side tracking.",
     },
     { name: "Singles (service)", description: "Side-out scoring — only the server can add points." },
   ];

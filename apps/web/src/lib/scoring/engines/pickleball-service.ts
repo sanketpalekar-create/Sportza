@@ -43,6 +43,11 @@ export interface PickleballServiceState {
   setupComplete: boolean;
   /** Doubles: each side must confirm who starts on the right before Lock setup */
   setupBaselineAck: { A: boolean; B: boolean };
+  /**
+   * True after Lock setup (configure path). False after Skip — scoreline keeps
+   * 0-0-2 / 0-0-1 but no player/side tracking in the UI.
+   */
+  trackPositions: boolean;
   rallyLog: RallyLogEntry[];
   nextSeq: number;
 }
@@ -64,6 +69,7 @@ export function snapshotPickleballService(s: PickleballServiceState): Record<str
     openingZeroZeroTwoActive: s.openingZeroZeroTwoActive,
     setupComplete: s.setupComplete,
     setupBaselineAck: { ...s.setupBaselineAck },
+    trackPositions: s.trackPositions,
     winner: s.winner,
     completedGamesCount: s.completedGames.length,
   };
@@ -148,8 +154,8 @@ function maybeEndGame(s: PickleballServiceState): void {
   s.firstServeTeamThisGame = loser;
   s.serving = loser;
   s.openingZeroZeroTwoActive = s.config.doubles;
-  s.setupBaselineAck = s.config.doubles ? { A: false, B: false } : { A: true, B: true };
-  s.setupComplete = !s.config.doubles;
+  // Initial setup only — never re-gate between games (skip or configure).
+  s.setupComplete = true;
   configureServingState(s, loser);
   pushLog(s, "new_game", { firstServe: loser, serverNumber: s.serverNumber });
 }
@@ -204,6 +210,10 @@ export function formatPickleballServeLine(
     ? `${state.currentGame[srv]}–${state.currentGame[recv]}–${state.serverNumber}`
     : `${state.currentGame[srv]}–${state.currentGame[recv]}`;
   const teamLabel = names[srv] ?? srv;
+  // Skip path: keep 0-0-2 / 0-0-1 scoreline, omit player and court side.
+  if (state.config.doubles && !state.trackPositions) {
+    return `${triple} · Serve ${state.serverNumber} · ${teamLabel}`;
+  }
   const plist = srv === "A" ? playersA : playersB;
   const pname = plist[state.currentServerPlayerIndex] ?? `P${state.currentServerPlayerIndex + 1}`;
   const rightPlayer = rightPlayerAtTeamScore(state.starterRightPlayerIndex[srv], state.currentGame[srv]);
@@ -247,6 +257,7 @@ export const pickleballServiceEngine: ScoringEngine<PickleballServiceState> = {
       winner: null,
       setupComplete: !doubles,
       setupBaselineAck: doubles ? { A: false, B: false } : { A: true, B: true },
+      trackPositions: false,
       rallyLog: [],
       nextSeq: 1,
     };
@@ -280,10 +291,21 @@ export const pickleballServiceEngine: ScoringEngine<PickleballServiceState> = {
         return state;
       }
       s.setupComplete = true;
+      s.trackPositions = true;
       if (s.config.doubles) {
         configureServingState(s, s.serving);
       }
-      pushLog(s, "setup_confirm", {});
+      pushLog(s, "setup_confirm", { trackPositions: true });
+      return s;
+    }
+
+    if (eventType === "skip_setup") {
+      s.setupComplete = true;
+      s.trackPositions = false;
+      if (s.config.doubles) {
+        configureServingState(s, s.serving);
+      }
+      pushLog(s, "setup_skip", { trackPositions: false });
       return s;
     }
 
@@ -350,7 +372,9 @@ export const pickleballServiceEngine: ScoringEngine<PickleballServiceState> = {
       : `${state.currentGame[srv]}–${state.currentGame[recv]}`;
     const name = teamNames[srv] ?? srv;
     const serveLine = state.config.doubles
-      ? `Serve ${state.serverNumber} · ${name} (P${state.currentServerPlayerIndex + 1})`
+      ? (state.trackPositions
+        ? `Serve ${state.serverNumber} · ${name} (P${state.currentServerPlayerIndex + 1})`
+        : `Serve ${state.serverNumber} · ${name}`)
       : `Serve · ${name}`;
 
     return {
@@ -384,7 +408,7 @@ export const pickleballServiceEngine: ScoringEngine<PickleballServiceState> = {
       { label: "Kitchen fault", eventType: "kitchen_fault", value: 0, style: "danger", team: "both" },
       { label: "Switch serve (fix)", eventType: "switch_serve", value: 0, style: "secondary" },
     ];
-    if (state.config.doubles) {
+    if (state.config.doubles && state.trackPositions) {
       base.unshift({
         label: "Swap who is on right (pick team tab)",
         eventType: "swap_starter_right",

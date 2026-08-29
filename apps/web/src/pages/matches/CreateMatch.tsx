@@ -333,10 +333,11 @@ export default function CreateMatch() {
 
       if (!matchId) throw new Error("Match ID not returned");
 
-      // Immediately set status to "live" so the user lands straight into scoring
+      // Immediately set status to "live" so the user lands straight into scoring.
+      // replace: true so Back from LiveMatch does not return to the spent create form.
       await updateStatus.mutateAsync({ id: matchId, status: "live" });
 
-      navigate(`/matches/${matchId}`);
+      navigate(`/matches/${matchId}`, { replace: true });
     } catch (err: any) {
       setError(err?.response?.data?.message ?? err?.message ?? "Something went wrong. Please try again.");
       setIsStarting(false);
@@ -410,7 +411,7 @@ export default function CreateMatch() {
                   <span className="text-white font-semibold">Doubles (rally)</span>,{" "}
                   <span className="text-white font-semibold">Doubles (service)</span>.{" "}
                   <span className="text-sky-300">(rally)</span> = any team can score from their panel.{" "}
-                  <span className="text-amber-300">(service)</span> = side-out scoring; doubles get a short court setup on the live screen before the first point.
+                  <span className="text-amber-300">(service)</span> = side-out scoring; doubles can configure court positions on the live screen, or skip and start without player-side tracking.
                 </p>
                 {(() => {
                   const ordered = orderPickleballFormatsForUi(selectedSport.formats!);
@@ -450,7 +451,7 @@ export default function CreateMatch() {
                     {" · "}
                     {(selectedFormat.description && String(selectedFormat.description).trim()) ||
                       (resolvePickleballScoreType(selectedFormat) === "pickleball_service"
-                        ? "Side-out scoring with Server 1 / 2 and a short court setup on the live screen."
+                        ? "Side-out scoring with Server 1 / 2. Optional court setup on the live screen, or skip without player-side tracking."
                         : "Every rally awards a point to the team you tap — no serve-only scoring.")}
                   </p>
                 )}
