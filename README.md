@@ -6,7 +6,9 @@ Sportza is the smart platform for booking sports venues, training, and performan
 
 **Cursor mobile / Cloud Agents:** See [docs/CURSOR_MOBILE_SETUP.md](docs/CURSOR_MOBILE_SETUP.md) — connect GitHub, use [cursor.com/agents](https://cursor.com/agents) on your phone with repo `sanketpalekar-create/Sportza`.
 
-**Vercel deploy:** See [docs/VERCEL.md](docs/VERCEL.md) — frontend + HTTP API on Vercel; managed MySQL + Redis; Cron for background jobs.
+**Railway deploy (recommended, full stack):** See [docs/RAILWAY.md](docs/RAILWAY.md) — MySQL + Redis + API + Web on Railway in ~15 minutes.
+
+**Vercel deploy (optional):** See [docs/VERCEL.md](docs/VERCEL.md) — frontend + HTTP API on Vercel; managed MySQL + Redis; Cron for background jobs.
 
 ## Features
 
