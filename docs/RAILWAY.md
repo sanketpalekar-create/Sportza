@@ -12,10 +12,9 @@ No Vercel. No cPanel. Four services, one project, done.
 |---------|------|
 | **MySQL** | Database (Railway plugin) |
 | **Redis** | OTP / queues (Railway plugin) |
-| **api** | Express backend (`apps/api`) |
-| **web** | React frontend (`apps/web`) |
+| **api** | Express + **frontend SPA** (one service for `sportza.in`) |
 
-Repo already has Dockerfiles + `apps/*/railway.toml`. You mostly click and paste env vars.
+Optional separate **web** service is only needed if you want a second URL. For `https://sportza.in`, attach the custom domain to **api** — the image builds `apps/web` and serves it on `/`, with the API under `/api`.
 
 ---
 
@@ -62,15 +61,30 @@ Wait until both show green/running.
 | `GOOGLE_CLIENT_ID` | your Google client id |
 | `DEV_AUTH_FALLBACK` | `false` |
 
+**Also set these as Build-time variables** (Vite bakes them into the SPA):
+
+| Variable | Value |
+|----------|--------|
+| `VITE_API_URL` | `/api` |
+| `VITE_GOOGLE_CLIENT_ID` | same as `GOOGLE_CLIENT_ID` |
+| `VITE_RAZORPAY_KEY_ID` | your key (optional) |
+| `VITE_MAP_PROVIDER` | `mappls` |
+
 Optional later: `RAZORPAY_*`, `SMTP_*`, `S3_*`, `MAPPLS_API_KEY`, etc.  
 See `deploy/railway.env.example` for the full list.
 
-5. **Settings → Networking → Generate Domain** → copy the URL  
-   Example: `https://api-production-xxxx.up.railway.app`
-6. Deploy / wait for success. Check:  
-   `https://YOUR-API-URL/api/health` → should return ok/JSON.
+5. **Settings → Networking**:
+   - Generate a Railway domain, **or**
+   - **Custom Domain** → `sportza.in` + `www.sportza.in` (point DNS as Railway shows)
+6. Deploy / wait for success. Check:
+   - `https://sportza.in/` → **frontend HTML** (not JSON)
+   - `https://sportza.in/api/health` → `{"status":"ok",...}`
 
 Schema sync runs automatically on start (`prisma db push` — this repo does not have a full migrate history).
+
+### If sportza.in shows `{"code":"NOT_FOUND","message":"Route not found"}`
+
+The domain is on the API service but the image has **no SPA build** yet (old deploy). Redeploy **api** with the updated Dockerfile that copies `apps/web/dist` → `apps/api/public`. After deploy, `/` serves the React app.
 
 ### If you already see: “migrate found failed migrations…”
 
@@ -100,27 +114,9 @@ npx prisma db push
 
 ---
 
-## 3. Deploy the web app
+## 3. Separate web service (optional)
 
-1. **+ New** → **GitHub Repo** → same Sportza repo again.
-2. Rename service to **`web`**.
-3. **Settings**:
-   - **Root Directory:** empty
-   - **Builder:** Dockerfile
-   - **Dockerfile path:** `apps/web/Dockerfile`
-4. **Variables** (turn on **Available at Build Time** for every `VITE_*` var):
-
-| Variable | Value |
-|----------|--------|
-| `VITE_API_URL` | `https://YOUR-API-URL/api` |
-| `VITE_GOOGLE_CLIENT_ID` | same as API `GOOGLE_CLIENT_ID` |
-| `VITE_RAZORPAY_KEY_ID` | your Razorpay key (or blank) |
-| `VITE_MAP_PROVIDER` | `mappls` |
-| `VITE_MAPPLS_API_KEY` | optional |
-
-5. **Networking → Generate Domain** → copy web URL  
-   Example: `https://web-production-xxxx.up.railway.app`
-6. Redeploy web after variables are set (Vite bakes `VITE_*` at **build** time).
+Not needed if `sportza.in` is on **api** (SPA is baked into that image). Only add a separate **web** service if you want a second frontend URL.
 
 ---
 
@@ -128,23 +124,23 @@ npx prisma db push
 
 1. On **api** Variables, set:
    ```text
-   CLIENT_ORIGIN=https://YOUR-WEB-URL
+   CLIENT_ORIGIN=https://sportza.in,https://www.sportza.in
    ```
-   (no trailing slash). Redeploy **api** if it does not pick up the change automatically.
+   (no trailing slash). Redeploy **api** if needed.
 
-2. Google Cloud Console → your OAuth Web client → **Authorized JavaScript origins** → add:
-   - `https://YOUR-WEB-URL`
-3. If you use redirect URIs, add the web URL there too.
+2. Google Cloud Console → OAuth Web client → **Authorized JavaScript origins** → add:
+   - `https://sportza.in`
+   - `https://www.sportza.in`
 
 ---
 
 ## 5. Smoke test
 
-- [ ] `GET https://YOUR-API/api/health` works  
-- [ ] `https://YOUR-WEB` loads the app  
-- [ ] Browser Network tab shows API calls to `YOUR-API`, not `localhost`  
-- [ ] Login / Google works (origins updated)  
-- [ ] No CORS errors in the console  
+- [ ] `https://sportza.in/` loads the **frontend** (HTML, not JSON)
+- [ ] `https://sportza.in/api/health` returns ok
+- [ ] Browser Network tab shows API calls to `/api/...` on the same host
+- [ ] Login / Google works (origins updated)
+- [ ] No CORS errors in the console
 
 ---
 
@@ -152,8 +148,8 @@ npx prisma db push
 
 | Change | Action |
 |--------|--------|
-| API code or API env | Redeploy **api** |
-| `VITE_*` values | Change vars → **Redeploy web** (must rebuild) |
+| API or SPA code | Redeploy **api** |
+| `VITE_*` values | Change vars (build-time) → **Redeploy api** |
 | DB schema | Update `schema.prisma` → redeploy **api** (`db push` on boot) |
 
 ---
@@ -162,14 +158,13 @@ npx prisma db push
 
 | Problem | Fix |
 |---------|-----|
-| Web calls `localhost` | `VITE_API_URL` wrong or not **Available at Build Time** → set + redeploy web |
-| CORS blocked | `CLIENT_ORIGIN` must exactly match the web HTTPS URL |
+| `sportza.in` shows JSON `NOT_FOUND` | Old image without SPA — redeploy api with updated Dockerfile |
+| Web calls wrong host | Set build-time `VITE_API_URL=/api` and redeploy api |
+| CORS blocked | `CLIENT_ORIGIN` must include `https://sportza.in` |
 | API crash on boot | Check MySQL reference: `DATABASE_URL` must be a `mysql://…` URL Prisma accepts |
 | `migrate found failed migrations` | Clear failed row (SQL in §2 above) + redeploy api with updated Dockerfile |
-| Missing tables / FK errors on migrate | Expected with incomplete migration history — use `db push` start (already in Dockerfile) |
 | Redis / OTP fails | Confirm `REDIS_URL` reference from Redis service |
-| Healthcheck fails | Confirm Dockerfile path is `apps/api/Dockerfile` and domain is public |
-| Google login broken | Add Railway web URL to Google Authorized JavaScript origins |
+| Google login broken | Add `https://sportza.in` to Google Authorized JavaScript origins |
 
 ---
 

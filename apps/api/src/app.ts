@@ -4,10 +4,28 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
+import fs from "fs";
+import path from "path";
 
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { generateOpenAPISpec } from "./lib/openapi";
 import { isVercel } from "./lib/runtime";
+
+/** Vite build output when API serves the SPA (Railway single-domain). */
+function resolveWebDist(): string | null {
+  const candidates = [
+    process.env.WEB_DIST,
+    path.join(process.cwd(), "public"),
+    path.join(process.cwd(), "../web/dist"),
+    path.join(__dirname, "../public"),
+    path.join(__dirname, "../../web/dist"),
+  ].filter(Boolean) as string[];
+
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "index.html"))) return dir;
+  }
+  return null;
+}
 
 import authRoutes from "./routes/auth";
 import venueRoutes from "./routes/venues";
@@ -151,6 +169,36 @@ export function createApp(): Express {
   app.use("/api/mobile-push-tokens", mobilePushTokenRoutes);
   app.use("/api/wallet", walletRoutes);
   app.use("/api/admin", adminRoutes);
+
+  // Railway / single-domain: serve the Vite SPA for non-API routes so
+  // https://sportza.in shows the frontend (not JSON NOT_FOUND).
+  // Skip on Vercel — static files are served by the platform separately.
+  if (!isVercel) {
+    const webDist = resolveWebDist();
+    if (webDist) {
+      console.log(`[sportza-api] Serving frontend from ${webDist}`);
+      app.use(
+        express.static(webDist, {
+          index: false,
+          maxAge: isProd ? "1h" : 0,
+          setHeaders(res, filePath) {
+            if (filePath.endsWith("index.html")) {
+              res.setHeader("Cache-Control", "no-cache");
+            }
+          },
+        })
+      );
+      app.use((req, res, next) => {
+        if (req.method !== "GET" && req.method !== "HEAD") return next();
+        if (req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
+          return next();
+        }
+        res.sendFile(path.join(webDist, "index.html"), (err) => {
+          if (err) next(err);
+        });
+      });
+    }
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);
