@@ -30,5 +30,5 @@ ENV NODE_ENV=production
 ENV PORT=5000
 EXPOSE 5000
 
-# Railway injects PORT; Prisma migrate runs on each deploy then starts the API
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx src/index.ts"]
+# Full schema sync (repo has incomplete migrate history) then start API
+CMD ["sh", "-c", "sed -i 's/\\r$//' scripts/railway-start.sh 2>/dev/null; sh scripts/railway-start.sh"]
