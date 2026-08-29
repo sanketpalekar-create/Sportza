@@ -15,6 +15,13 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { buildNashikVenueDefs, mergeNashikIntoVenueDefs } from "./data/nashik-venues";
+import {
+  PICKLETHON_AUGUST_POOLS,
+  PICKLETHON_GROUP_LETTERS,
+  PICKLETHON_GROUP_SCHEDULE,
+  PICKLETHON_KNOCKOUT_BRACKET,
+  PICKLETHON_STAGES,
+} from "./data/picklethon-pools";
 
 const prisma = new PrismaClient();
 
@@ -2121,6 +2128,150 @@ async function main() {
       },
     });
   }
+
+  // --- Tournament 6: Picklethon August (official Draws: M01–M40 + R16→Final) ---
+  {
+    const PICKLETHON_NAME = "Picklethon August";
+    const tPicklethon = await prisma.tournament.findFirst({ where: { name: PICKLETHON_NAME } });
+    if (!tPicklethon) {
+      /** URL-safe slug for email local parts (disambiguate duplicate first names by team). */
+      function picklethonSlug(value: string): string {
+        return value
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, ".")
+          .replace(/^\.+|\.+$/g, "");
+      }
+
+      async function upsertPicklethonPlayer(displayName: string, teamName: string) {
+        const email = `${picklethonSlug(displayName)}.${picklethonSlug(teamName)}@picklethon.sportza.in`;
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing) return existing;
+        return prisma.user.create({
+          data: {
+            email,
+            name: displayName,
+            role: "player",
+            password: DEV_PASSWORD_HASH,
+          },
+        });
+      }
+
+      const teamsJson: Array<{
+        name: string;
+        groupIndex: number;
+        playerNames: [string, string];
+        players: number[];
+      }> = [];
+      const playersJson: Array<{
+        teamName: string;
+        playerName: string;
+        userId: number;
+        username: string | null;
+        jerseyNo: null;
+        isPlaceholder: boolean;
+        stats: Record<string, number>;
+        goals: number;
+        assists: number;
+        points: number;
+      }> = [];
+
+      for (let gIdx = 0; gIdx < PICKLETHON_GROUP_LETTERS.length; gIdx++) {
+        const letter = PICKLETHON_GROUP_LETTERS[gIdx];
+        for (const team of PICKLETHON_AUGUST_POOLS[letter]) {
+          const [p1, p2] = await Promise.all([
+            upsertPicklethonPlayer(team.player1, team.name),
+            upsertPicklethonPlayer(team.player2, team.name),
+          ]);
+          teamsJson.push({
+            name: team.name,
+            groupIndex: gIdx,
+            playerNames: [team.player1, team.player2],
+            players: [p1.id, p2.id],
+          });
+          for (const [playerName, user] of [
+            [team.player1, p1] as const,
+            [team.player2, p2] as const,
+          ]) {
+            playersJson.push({
+              teamName: team.name,
+              playerName,
+              userId: user.id,
+              username: null,
+              jerseyNo: null,
+              isPlaceholder: false,
+              stats: { putaways: 0, setups: 0, aces: 0 },
+              goals: 0,
+              assists: 0,
+              points: 0,
+            });
+          }
+        }
+      }
+
+      const created = await prisma.tournament.create({
+        data: {
+          name: PICKLETHON_NAME,
+          description:
+            "Picklethon August pickleball doubles tournament. 4 groups of 5 teams; top 4 per group advance to Round of 16.",
+          sport: "pickleball",
+          sportId: sports["pickleball"].id,
+          format: "group_knockout",
+          venueId: venuePickleball.id,
+          createdById: arjun.id,
+          maxTeams: 20,
+          status: "in_progress",
+          startDate: new Date("2026-08-01"),
+          endDate: new Date("2026-08-31"),
+          teams: teamsJson as object,
+          stages: PICKLETHON_STAGES as object,
+          players: playersJson as object,
+        },
+      });
+
+      const groupIndexByLetter: Record<(typeof PICKLETHON_GROUP_LETTERS)[number], number> = {
+        A: 0, B: 1, C: 2, D: 3,
+      };
+
+      for (const m of PICKLETHON_GROUP_SCHEDULE) {
+        await prisma.tournamentFixture.create({
+          data: {
+            tournamentId: created.id,
+            stage: 1,
+            round: 1,
+            groupIndex: groupIndexByLetter[m.group],
+            matchOrder: m.matchOrder,
+            team1Type: "team",
+            team1Ref: { name: m.team1, court: m.court, matchId: m.matchId },
+            team2Type: "team",
+            team2Ref: { name: m.team2, court: m.court, matchId: m.matchId },
+            status: "upcoming",
+          },
+        });
+      }
+
+      for (const m of PICKLETHON_KNOCKOUT_BRACKET) {
+        await prisma.tournamentFixture.create({
+          data: {
+            tournamentId: created.id,
+            stage: 2,
+            round: m.round,
+            matchOrder: m.matchOrder,
+            team1Type: m.team1Type,
+            team1Ref: { ...m.team1, court: m.court, matchId: m.matchId },
+            team2Type: m.team2Type,
+            team2Ref: { ...m.team2, court: m.court, matchId: m.matchId },
+            status: "upcoming",
+          },
+        });
+      }
+
+      console.log(
+        `  ✓ Picklethon August — ${teamsJson.length} teams, 4 groups, ${PICKLETHON_GROUP_SCHEDULE.length} group fixtures, ${PICKLETHON_KNOCKOUT_BRACKET.length} knockout fixtures`
+      );
+    }
+  }
+
   console.log("  ✓ Tournaments + fixtures");
 
   // Shared month helpers (used by sections 13 and 15)
