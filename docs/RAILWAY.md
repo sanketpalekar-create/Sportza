@@ -70,7 +70,33 @@ See `deploy/railway.env.example` for the full list.
 6. Deploy / wait for success. Check:  
    `https://YOUR-API-URL/api/health` → should return ok/JSON.
 
-Migrations run automatically on start (`prisma migrate deploy` in the Dockerfile).
+Schema sync runs automatically on start (`prisma db push` — this repo does not have a full migrate history).
+
+### If you already see: “migrate found failed migrations…”
+
+An earlier deploy ran `migrate deploy` and left a failed row. Fix **once**, then redeploy:
+
+1. Railway → **MySQL** service → open a query console (or Data tab), run:
+
+```sql
+-- Clean partial table if it exists
+DROP TABLE IF EXISTS `mobile_push_tokens`;
+
+-- Clear the failed migration record so boot is not blocked
+DELETE FROM `_prisma_migrations`
+WHERE `migration_name` = '20260509110000_add_mobile_push_tokens';
+```
+
+2. Redeploy the **api** service (new Dockerfile uses `db push`, not `migrate deploy`).
+
+Alternative from a machine with Railway `DATABASE_URL`:
+
+```bash
+cd apps/api
+$env:DATABASE_URL="mysql://..."   # paste Railway MySQL URL
+npx prisma migrate resolve --rolled-back 20260509110000_add_mobile_push_tokens
+npx prisma db push
+```
 
 ---
 
@@ -128,7 +154,7 @@ Migrations run automatically on start (`prisma migrate deploy` in the Dockerfile
 |--------|--------|
 | API code or API env | Redeploy **api** |
 | `VITE_*` values | Change vars → **Redeploy web** (must rebuild) |
-| DB schema | Push migration → redeploy **api** (migrate runs on boot) |
+| DB schema | Update `schema.prisma` → redeploy **api** (`db push` on boot) |
 
 ---
 
@@ -139,6 +165,8 @@ Migrations run automatically on start (`prisma migrate deploy` in the Dockerfile
 | Web calls `localhost` | `VITE_API_URL` wrong or not **Available at Build Time** → set + redeploy web |
 | CORS blocked | `CLIENT_ORIGIN` must exactly match the web HTTPS URL |
 | API crash on boot | Check MySQL reference: `DATABASE_URL` must be a `mysql://…` URL Prisma accepts |
+| `migrate found failed migrations` | Clear failed row (SQL in §2 above) + redeploy api with updated Dockerfile |
+| Missing tables / FK errors on migrate | Expected with incomplete migration history — use `db push` start (already in Dockerfile) |
 | Redis / OTP fails | Confirm `REDIS_URL` reference from Redis service |
 | Healthcheck fails | Confirm Dockerfile path is `apps/api/Dockerfile` and domain is public |
 | Google login broken | Add Railway web URL to Google Authorized JavaScript origins |
@@ -161,7 +189,7 @@ Useful later for logs (`railway logs`) — not required for the first deploy.
 
 | File | Purpose |
 |------|---------|
-| `apps/api/Dockerfile` | API image + migrate + start |
+| `apps/api/Dockerfile` | API image + `db push` + start |
 | `apps/web/Dockerfile` | Vite build + nginx on `$PORT` |
 | `apps/api/railway.toml` | Healthcheck / Dockerfile hints |
 | `apps/web/railway.toml` | Healthcheck / Dockerfile hints |
