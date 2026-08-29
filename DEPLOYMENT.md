@@ -101,13 +101,16 @@ Update your `.env` files the same way as above.
 ```
 Users
   │
-  ├─► Vercel (Frontend)          → apps/web (Vite build)
+  ├─► Railway Web (recommended)  → apps/web (Docker + nginx)
+  │     or Vercel (optional)
   │
-  └─► Render / Railway (Backend) → apps/api (Node.js)
+  └─► Railway API                → apps/api (Docker)
            │
-           ├─► Railway MySQL / PlanetScale (Database)
-           └─► Upstash Redis (OTP / queues)
+           ├─► Railway MySQL
+           └─► Railway Redis
 ```
+
+**Full Railway guide (fastest):** [docs/RAILWAY.md](docs/RAILWAY.md)
 
 ---
 

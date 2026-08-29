@@ -1,0 +1,16 @@
+# Sportza Web — Railway service config
+# In Railway: Settings → Build → set "Custom Dockerfile path" to apps/web/Dockerfile
+# Root Directory: leave as repo root (Dockerfile context is monorepo root)
+#
+# IMPORTANT: mark all VITE_* variables as "Available at Build Time" in Railway Variables.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/web/Dockerfile"
+watchPatterns = ["apps/web/**", "packages/**", "pnpm-lock.yaml", "package.json"]
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

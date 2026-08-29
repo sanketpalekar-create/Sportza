@@ -26,6 +26,9 @@ COPY --from=build /app/packages ./packages
 COPY --from=build /app/tsconfig.base.json ./
 
 WORKDIR /app/apps/api
+ENV NODE_ENV=production
+ENV PORT=5000
 EXPOSE 5000
 
+# Railway injects PORT; Prisma migrate runs on each deploy then starts the API
 CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx src/index.ts"]

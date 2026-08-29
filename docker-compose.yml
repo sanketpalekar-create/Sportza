@@ -67,6 +67,12 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:5000/api
+        VITE_AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
+        VITE_AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-}
+        VITE_AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
+        VITE_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
     container_name: sportza-web
     restart: unless-stopped
     ports:
@@ -74,11 +80,8 @@ services:
     depends_on:
       - api
     environment:
-      VITE_API_URL: http://localhost:5000/api
-      VITE_AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
-      VITE_AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-}
-      VITE_AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
-      VITE_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      PORT: 5173
+      API_UPSTREAM: http://api:5000
 
 volumes:
   mysql-data:
