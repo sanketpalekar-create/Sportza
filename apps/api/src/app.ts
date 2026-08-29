@@ -99,7 +99,65 @@ export function createApp(): Express {
   const allowedOriginsFn = parseAllowedOrigins(process.env.CLIENT_ORIGIN);
 
   app.set("trust proxy", 1);
-  app.use(helmet());
+
+  // CSP must allow Razorpay, Google Sign-In, Mappls, and the inline error
+  // script in apps/web/index.html — default helmet script-src 'self' blocks them.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://checkout.razorpay.com",
+            "https://accounts.google.com",
+            "https://apis.google.com",
+            "https://www.gstatic.com",
+            "https://apis.mappls.com",
+            "https://maps.googleapis.com",
+          ],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+            "https://apis.mappls.com",
+          ],
+          fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+          imgSrc: ["'self'", "data:", "blob:", "https:"],
+          connectSrc: [
+            "'self'",
+            "https://checkout.razorpay.com",
+            "https://api.razorpay.com",
+            "https://lumberjack.razorpay.com",
+            "https://accounts.google.com",
+            "https://oauth2.googleapis.com",
+            "https://www.googleapis.com",
+            "https://apis.mappls.com",
+            "https://maps.googleapis.com",
+            "wss:",
+            "ws:",
+          ],
+          frameSrc: [
+            "'self'",
+            "https://api.razorpay.com",
+            "https://checkout.razorpay.com",
+            "https://accounts.google.com",
+            "https://apis.mappls.com",
+          ],
+          workerSrc: ["'self'", "blob:"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'", "https://checkout.razorpay.com"],
+          upgradeInsecureRequests: [],
+        },
+      },
+      // Google OAuth popup / One Tap need this (strict same-origin breaks them)
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+      crossOriginEmbedderPolicy: false,
+    })
+  );
   app.use(
     cors({
       origin: allowedOriginsFn,
