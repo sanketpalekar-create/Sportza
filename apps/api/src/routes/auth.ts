@@ -324,8 +324,20 @@ router.post(
       }
       const code = crypto.randomInt(100000, 999999).toString();
       await setOtp(email, code, 300);
-      await addEmailJob("otp", { to: email, otp: code });
-      res.json({ success: true, message: "OTP sent to email" });
+      const isDev = process.env.NODE_ENV !== "production";
+      const hasSmtp = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+      if (hasSmtp) {
+        await addEmailJob("otp", { to: email, otp: code });
+      } else if (isDev) {
+        console.log(`[DEV] Email OTP for ${email}: ${code}`);
+      } else {
+        return next(new BadRequestError("Email delivery is not configured"));
+      }
+      res.json({
+        success: true,
+        message: "OTP sent to email",
+        ...(isDev && !hasSmtp && { devOtp: code }),
+      });
     } catch (err) {
       next(err);
     }

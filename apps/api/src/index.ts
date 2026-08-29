@@ -6,6 +6,7 @@ import { initSocket } from "./lib/socket";
 import { canRunPersistentWorkers } from "./lib/runtime";
 import { startHoldCleanupSchedule } from "./workers/holdCleanupWorker";
 import { startOpenPlayDeadlineSchedule } from "./workers/openPlayDeadlineWorker";
+import "./workers/emailWorker";
 
 /**
  * Local / Docker entrypoint: HTTP listen + Socket.io + BullMQ schedulers.

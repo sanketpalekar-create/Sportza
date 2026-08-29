@@ -247,7 +247,11 @@ export default function Login() {
           setOtpVal(res.devOtp); // auto-fill the OTP boxes
         }
       } else {
-        await sendOtp.mutateAsync({ email: val });
+        const res: any = await sendOtp.mutateAsync({ email: val });
+        if (res?.devOtp) {
+          setDevOtpHint(res.devOtp);
+          setOtpVal(res.devOtp);
+        }
       }
       setIdentifier(val);
       setOtpVal("");
