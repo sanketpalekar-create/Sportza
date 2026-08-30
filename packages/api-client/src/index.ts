@@ -124,6 +124,7 @@ export {
   useCreateTournament,
   useGenerateTournamentFixtures,
   useAdvanceTournamentStage,
+  useSyncTournamentBracket,
   useClearTournamentFixtures,
   useUpdateTournament,
   useUpdateTournamentStatus,

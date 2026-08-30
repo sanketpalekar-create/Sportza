@@ -9,6 +9,7 @@ import { idParamSchema, paginationSchema } from "../schemas/common";
 import { processMatchResult } from "../services/scoring";
 import { emitToMatch } from "../lib/socket";
 import { createBulkNotifications, NotifType } from "../services/notificationService";
+import { syncBracketAfterMatch } from "../lib/tournament-bracket-resolve";
 
 /** Extract unique numeric player IDs from a teams JSON field. */
 function extractPlayerIds(teams: unknown): number[] {
@@ -476,6 +477,8 @@ router.put(
           where: { matchId: id },
           data:  { status: "completed" },
         });
+        // Fill QF/SF/Final/Bronze from this result (and backfill earlier completed KO matches)
+        await syncBracketAfterMatch(id);
       }
 
       res.json({ success: true, data: updated });
@@ -607,6 +610,9 @@ router.put(
           where: { matchId: id },
           data:  { status: fixtureStatus },
         });
+        if (status === "completed") {
+          await syncBracketAfterMatch(id);
+        }
       }
 
       res.json({ success: true, data: updated });
@@ -705,6 +711,7 @@ router.put(
         where: { matchId: id },
         data:  { status: "completed" },
       });
+      await syncBracketAfterMatch(id);
 
       const updated = await prisma.match.findUnique({ where: { id } });
 

@@ -1060,6 +1060,18 @@ export function useAdvanceTournamentStage(tournamentId: number) {
   });
 }
 
+export function useSyncTournamentBracket(tournamentId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiClient.post(`/tournaments/${tournamentId}/sync-bracket`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tournaments", tournamentId] });
+      qc.invalidateQueries({ queryKey: ["tournaments", tournamentId, "standings"] });
+    },
+  });
+}
+
 export function useClearTournamentFixtures(id: number) {
   const qc = useQueryClient();
   return useMutation({

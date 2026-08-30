@@ -1,9 +1,9 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   useTournament, useTournamentStandings,
-  useGenerateTournamentFixtures, useAdvanceTournamentStage,
+  useGenerateTournamentFixtures, useAdvanceTournamentStage, useSyncTournamentBracket,
   useUpdateTournamentStatus, useStartFixtureMatch,
   useCurrentUser, useSearchUsers,
   useTournamentRegistrations, useAcceptRegistration, useRejectRegistration,
@@ -49,6 +49,22 @@ const MATCH_STATUS_LABEL: Record<string, string> = {
   completed:   "DONE",
   bye:         "BYE",
   draft:       "PENDING",
+};
+
+/** Label a knockout round from how many fixtures it contains. */
+function knockoutRoundLabel(round: number, fixturesInRound: number, maxRound: number): string {
+  if (round === maxRound) return fixturesInRound > 1 ? "Finals" : "Final";
+  if (fixturesInRound >= 8) return "Round of 16";
+  if (fixturesInRound >= 4) return "Quarter-finals";
+  if (fixturesInRound >= 2) return "Semi-finals";
+  return `Round ${round}`;
+}
+
+type StageNavItem = {
+  key: string;
+  stageNum: number;
+  round: number | null;
+  name: string;
 };
 
 // Flatten scoring-engine state to a simple {a, b} for display.
@@ -108,7 +124,11 @@ function knockoutRoundLabel(round: number, maxRound: number): string {
 }
 
 function isTBD(ref: any): boolean {
-  return !ref?.name && (ref?.bye === true || ref?.round != null);
+  if (!ref) return true;
+  if (ref.bye === true) return false;
+  // Unresolved winner/loser pointer (no real team name yet)
+  if ((ref.round != null || ref.stage != null) && !ref.name) return true;
+  return !ref.name;
 }
 
 function gameScores(scores: any): string | null {
@@ -127,6 +147,10 @@ export default function TournamentDetail() {
 
   const activeTab      = (searchParams.get("tab") as "fixtures" | "standings" | "teams" | "bracket" | "stats" | "updates") || "fixtures";
   const activeStageNum = parseInt(searchParams.get("stage") || "1", 10);
+  const activeRoundParam = searchParams.get("round");
+  const activeRound = activeRoundParam != null && activeRoundParam !== ""
+    ? parseInt(activeRoundParam, 10)
+    : null;
 
   const setActiveTab = useCallback((tab: string) => {
     setSearchParams(p => { p.set("tab", tab); return p; }, { replace: true });
@@ -136,6 +160,16 @@ export default function TournamentDetail() {
     setSearchParams(p => {
       const next = typeof fn === "function" ? fn(parseInt(p.get("stage") || "1", 10)) : fn;
       p.set("stage", String(next));
+      p.delete("round");
+      return p;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setActiveStageNav = useCallback((stageNum: number, round: number | null) => {
+    setSearchParams(p => {
+      p.set("stage", String(stageNum));
+      if (round != null) p.set("round", String(round));
+      else p.delete("round");
       return p;
     }, { replace: true });
   }, [setSearchParams]);
@@ -181,6 +215,7 @@ export default function TournamentDetail() {
 
   const generateFixtures   = useGenerateTournamentFixtures(tournamentId);
   const advanceStage       = useAdvanceTournamentStage(tournamentId);
+  const syncBracket        = useSyncTournamentBracket(tournamentId);
   const updateStatus       = useUpdateTournamentStatus(tournamentId);
   const startFixtureMatch  = useStartFixtureMatch(tournamentId);
   const acceptReg          = useAcceptRegistration(tournamentId);
@@ -226,6 +261,41 @@ export default function TournamentDetail() {
   const { data: coOrgSearchRes } = useSearchUsers(coOrgSearch);
   const coOrgSearchResults: any[] = (coOrgSearchRes as any)?.users ?? [];
 
+  // Backfill QF/SF/Final when earlier KO rounds are done but later slots still TBD
+  const bracketSyncAttempted = useRef(false);
+  const syncBracketMutate = syncBracket.mutate;
+  useEffect(() => {
+    if (!isManager || !tournament?.id || bracketSyncAttempted.current) return;
+
+    const koFixtures = allFixtures.filter((f: any) => {
+      const stageIdx = (f.stage ?? 1) - 1;
+      return stages[stageIdx]?.format === "knockout";
+    });
+    if (koFixtures.length === 0) return;
+
+    const hasCompletedKo = koFixtures.some(
+      (f: any) =>
+        f.status === "completed" ||
+        f.match?.status === "completed"
+    );
+    if (!hasCompletedKo) return;
+
+    const hasUnresolvedDownstream = koFixtures.some((f: any) => {
+      const done =
+        f.status === "completed" || f.match?.status === "completed";
+      if (done) return false;
+      return isTBD(f.team1Ref) || isTBD(f.team2Ref);
+    });
+    if (!hasUnresolvedDownstream) return;
+
+    bracketSyncAttempted.current = true;
+    syncBracketMutate(undefined, {
+      onError: () => {
+        bracketSyncAttempted.current = false;
+      },
+    });
+  }, [isManager, tournament?.id, allFixtures, stages, syncBracketMutate]);
+
   // ── Grouped-stage helpers ──────────────────────────────────────────────────
   // First stage with groupCount > 1 (if any)
   const groupedStage     = stages.find((s: any) => (s.groupCount ?? 0) > 1 && !s.singleFormat);
@@ -262,8 +332,58 @@ export default function TournamentDetail() {
     return map;
   }, [allFixtures]);
 
+  /** Expand knockout stages into Round of 16 / Quarters / Semis / Finals pills. */
+  const stageNavItems = useMemo((): StageNavItem[] => {
+    if (!isMultiStage) return [];
+    const items: StageNavItem[] = [];
+    for (let i = 0; i < stages.length; i++) {
+      const s = stages[i];
+      const stageNum = i + 1;
+      const fix = fixturesByStage[stageNum] ?? [];
+      const isKo = (s.format ?? "") === "knockout";
+      if (isKo && fix.length > 0) {
+        const byRound: Record<number, any[]> = {};
+        for (const f of fix) {
+          const r = f.round ?? 1;
+          (byRound[r] ??= []).push(f);
+        }
+        const rounds = Object.keys(byRound).map(Number).sort((a, b) => a - b);
+        const maxR = rounds[rounds.length - 1] ?? 1;
+        if (rounds.length > 1) {
+          for (const r of rounds) {
+            items.push({
+              key: `${stageNum}-${r}`,
+              stageNum,
+              round: r,
+              name: knockoutRoundLabel(r, byRound[r].length, maxR),
+            });
+          }
+          continue;
+        }
+      }
+      items.push({
+        key: String(stageNum),
+        stageNum,
+        round: null,
+        name: s.name ?? `Stage ${stageNum}`,
+      });
+    }
+    return items;
+  }, [isMultiStage, stages, fixturesByStage]);
+
   const stageKey   = isMultiStage ? activeStageNum : 0;
-  const stageFix   = fixturesByStage[stageKey] ?? [];
+  const stageFixAll = fixturesByStage[stageKey] ?? [];
+  // When knockout is expanded into round pills and URL has no ?round=, default to first round
+  const effectiveRound = useMemo(() => {
+    if (activeRound != null && !Number.isNaN(activeRound)) return activeRound;
+    const koNav = stageNavItems.filter((i) => i.stageNum === activeStageNum && i.round != null);
+    if (koNav.length > 0) return koNav[0].round;
+    return null;
+  }, [activeRound, stageNavItems, activeStageNum]);
+  // Fixtures tab: optionally filter to one knockout round (e.g. Round of 16 only)
+  const stageFix = effectiveRound != null
+    ? stageFixAll.filter((f: any) => (f.round ?? 1) === effectiveRound)
+    : stageFixAll;
 
   const { grouped, hasGroups } = useMemo(() => {
     const map: Record<number, any[]> = {};
@@ -276,8 +396,8 @@ export default function TournamentDetail() {
   }, [stageFix]);
 
   const maxRound = useMemo(
-    () => stageFix.reduce((m, f) => Math.max(m, f.round ?? 1), 1),
-    [stageFix]
+    () => stageFixAll.reduce((m, f) => Math.max(m, f.round ?? 1), 1),
+    [stageFixAll]
   );
 
   /**
@@ -339,7 +459,7 @@ export default function TournamentDetail() {
   const isKnockoutStage = tournament?.format === "knockout" ||
     (stageConfig && (stageConfig.format === "knockout"));
 
-  const scorableFixtures = stageFix.filter(
+  const scorableFixtures = stageFixAll.filter(
     (f: any) => !(f.team1Type === "winner" && f.team2Type === "winner")
   );
   const stageComplete = scorableFixtures.length > 0 &&
@@ -350,7 +470,7 @@ export default function TournamentDetail() {
   const nextStageHasScored   = nextStageFixtures.some((f: any) => f.matchId != null);
   const stageAlreadyAdvanced = stageConfig?.status === "completed";
 
-  const canGenerate = stageFix.length === 0 && teams.length >= 2
+  const canGenerate = stageFixAll.length === 0 && teams.length >= 2
     && (status === "draft" || status === "registration" || status === "in_progress")
     && (!isMultiStage || activeStageNum === 1);
 
@@ -784,15 +904,18 @@ export default function TournamentDetail() {
       {/* ── Stage selector (multi-stage only) ── */}
       {isMultiStage && !isLoading && (
         <div className="flex gap-2 px-4 mb-4 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-          {stages.map((s: any, i: number) => {
-            const sNum    = i + 1;
-            const isActive = sNum === activeStageNum;
-            const hasFix   = !!(fixturesByStage[sNum]?.length);
-            const isDone   = hasFix && (fixturesByStage[sNum] ?? []).every(
+          {stageNavItems.map((item) => {
+            const isActive = item.stageNum === activeStageNum
+              && (item.round == null ? effectiveRound == null : item.round === effectiveRound);
+            const fixForItem = (fixturesByStage[item.stageNum] ?? []).filter((f: any) =>
+              item.round == null ? true : (f.round ?? 1) === item.round
+            );
+            const hasFix = fixForItem.length > 0;
+            const isDone = hasFix && fixForItem.every(
               (f: any) => f.status === "completed" || f.match?.status === "completed" || f.status === "bye"
             );
             return (
-              <button key={sNum} onClick={() => setActiveStageNum(sNum)}
+              <button key={item.key} onClick={() => setActiveStageNav(item.stageNum, item.round)}
                 className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 active:scale-95 transition-transform"
                 style={{
                   borderRadius: "10px", fontSize: "12px", fontWeight: isActive ? "700" : "500",
@@ -801,7 +924,7 @@ export default function TournamentDetail() {
                   border: isActive ? "none" : "1px solid rgba(255,255,255,0.06)",
                 }}>
                 {isDone && <CheckCircle style={{ width: "12px", height: "12px", color: isActive ? "#000" : "#22C55E" }} />}
-                {s.name ?? `Stage ${sNum}`}
+                {item.name}
               </button>
             );
           })}
@@ -944,8 +1067,8 @@ export default function TournamentDetail() {
               </div>
             )}
 
-            {isManager && stageFix.length > 0
-              && stageFix.every((f: any) => f.status !== "completed" && f.match?.status !== "completed")
+            {isManager && stageFixAll.length > 0
+              && stageFixAll.every((f: any) => f.status !== "completed" && f.match?.status !== "completed")
               && status !== "completed" && (
               <div className="flex justify-end mb-1">
                 <button
@@ -1640,13 +1763,13 @@ export default function TournamentDetail() {
           <>
             {isKnockoutStage ? (
               /* ── Knockout stage ── */
-              stageFix.length === 0 ? (
+              stageFixAll.length === 0 ? (
                 <div className="p-8 text-center" style={{ borderRadius: "16px", backgroundColor: "#1E293B" }}>
                   <p className="text-[#64748B]" style={{ fontSize: "13px" }}>Generate fixtures first to view the bracket.</p>
                 </div>
               ) : (
                 <BracketView
-                  fixtures={stageFix}
+                  fixtures={stageFixAll}
                   maxRound={maxRound}
                   isTournamentActive={status === "in_progress"}
                   isStarting={startingFixtureId}

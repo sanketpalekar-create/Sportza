@@ -17,6 +17,7 @@ import {
 } from "../lib/tournament-player-stats";
 import { resolveTournamentSport } from "../lib/tournament-sport";
 import { createNotification, createBulkNotifications, NotifType } from "../services/notificationService";
+import { syncKnockoutBracket, isPointerRef } from "../lib/tournament-bracket-resolve";
 
 /** Extract all user IDs from a tournament's players JSON array. */
 function rosterUserIds(players: unknown): number[] {
@@ -1126,6 +1127,41 @@ router.post(
   }
 );
 
+// POST /:id/sync-bracket — Propagate completed KO results into QF/SF/Final/Bronze (no deletes)
+router.post(
+  "/:id/sync-bracket",
+  jwtCheck, attachUser, requireAuth,
+  validate({ params: idParamSchema }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params as unknown as z.infer<typeof idParamSchema>;
+      const userId = req.userId!;
+
+      const tournament = await prisma.tournament.findUnique({
+        where: { id },
+        include: { coOrganizers: true },
+      });
+      if (!tournament) throw new NotFoundError("Tournament");
+      if (!isScorerOrAbove(tournament, userId)) {
+        throw new BadRequestError("Only organizer or co-organizer can sync the bracket");
+      }
+
+      const result = await syncKnockoutBracket(id);
+      const fixtures = await prisma.tournamentFixture.findMany({
+        where: { tournamentId: id },
+        include: { match: true },
+        orderBy: [{ stage: "asc" }, { round: "asc" }, { matchOrder: "asc" }],
+      });
+
+      res.json({
+        success: true,
+        message: `Bracket synced (${result.propagated} slots updated)`,
+        data: { propagated: result.propagated, fixtures },
+      });
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /:id/fixtures/:fixtureId/start-match — Create (or retrieve) the Match for a fixture
 router.post(
   "/:id/fixtures/:fixtureId/start-match",
@@ -1158,6 +1194,14 @@ router.post(
         return res.json({ success: true, matchId: fixture.matchId, existing: true });
       }
 
+      if (
+        fixture.team1Type === "winner" || fixture.team1Type === "loser" ||
+        fixture.team2Type === "winner" || fixture.team2Type === "loser" ||
+        isPointerRef(fixture.team1Ref) || isPointerRef(fixture.team2Ref)
+      ) {
+        throw new BadRequestError("Cannot start match until both teams are decided from prior rounds");
+      }
+
       // Prefer sportId; fall back to name / displayName variants for legacy tournaments
       const sport = await resolveTournamentSport({
         sportId: tournament.sportId,
@@ -1173,9 +1217,12 @@ router.post(
         });
       }
 
-      // Extract team names from the fixture refs (TBD slots are allowed — names default to placeholders)
-      const t1Name = (fixture.team1Ref as any)?.name ?? "Team A";
-      const t2Name = (fixture.team2Ref as any)?.name ?? "Team B";
+      // Extract team names from the fixture refs
+      const t1Name = (fixture.team1Ref as any)?.name;
+      const t2Name = (fixture.team2Ref as any)?.name;
+      if (!t1Name || !t2Name) {
+        throw new BadRequestError("Cannot start match until both teams are decided from prior rounds");
+      }
 
       const allTeams = (tournament.teams as any[]) ?? [];
       const allPlayers = (tournament.players as any[]) ?? [];

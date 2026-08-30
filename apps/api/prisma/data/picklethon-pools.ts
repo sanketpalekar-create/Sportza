@@ -207,6 +207,7 @@ export const PICKLETHON_STAGES = [
     playersPerTeam: 2,
   },
   {
+    // Single knockout stage; UI expands rounds into Round of 16 → Quarters → Semis → Finals
     stageOrder: 2,
     name: "Knockout",
     format: "knockout",

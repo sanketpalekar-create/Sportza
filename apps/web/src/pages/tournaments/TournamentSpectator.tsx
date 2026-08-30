@@ -9,6 +9,14 @@ import { format } from "date-fns";
 
 const GROUP_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+function knockoutRoundLabel(round: number, fixturesInRound: number, maxRound: number): string {
+  if (round === maxRound) return fixturesInRound > 1 ? "Finals" : "Final";
+  if (fixturesInRound >= 8) return "Round of 16";
+  if (fixturesInRound >= 4) return "Quarter-finals";
+  if (fixturesInRound >= 2) return "Semi-finals";
+  return `Round ${round}`;
+}
+
 const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   registration: { color: "#3B82F6", bg: "rgba(59,130,246,0.12)" },
   in_progress:  { color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
@@ -395,12 +403,21 @@ export default function TournamentSpectator() {
 
   const activeTab      = searchParams.get("tab") || "fixtures";
   const activeStageNum = parseInt(searchParams.get("stage") || "1", 10);
+  const activeRoundParam = searchParams.get("round");
+  const activeRound = activeRoundParam != null && activeRoundParam !== ""
+    ? parseInt(activeRoundParam, 10)
+    : null;
 
   const setActiveTab = (tab: string) => {
     setSearchParams(p => { p.set("tab", tab); return p; }, { replace: true });
   };
-  const setStage = (n: number) => {
-    setSearchParams(p => { p.set("stage", String(n)); return p; }, { replace: true });
+  const setStageNav = (stageNum: number, round: number | null) => {
+    setSearchParams(p => {
+      p.set("stage", String(stageNum));
+      if (round != null) p.set("round", String(round));
+      else p.delete("round");
+      return p;
+    }, { replace: true });
   };
 
   // ── Queries (poll every 30s when live) ──────────────────────────────────────
@@ -455,11 +472,59 @@ export default function TournamentSpectator() {
     setPollInterval(status === "in_progress" ? 5_000 : false);
   }, [status]);
 
-  // Fixtures for the active stage
-  const stageFix = useMemo(() => {
+  // Fixtures for the active stage (optionally one knockout round)
+  const stageFixAll = useMemo(() => {
     if (!isMultiStage) return allFixtures;
     return allFixtures.filter((f: any) => (f.stage ?? 1) === activeStageNum);
   }, [allFixtures, isMultiStage, activeStageNum]);
+
+  const stageNavItems = useMemo(() => {
+    if (!isMultiStage) return [] as Array<{ key: string; stageNum: number; round: number | null; name: string }>;
+    const items: Array<{ key: string; stageNum: number; round: number | null; name: string }> = [];
+    for (const s of stages) {
+      const stageNum = s.stageOrder as number;
+      const fix = allFixtures.filter((f: any) => (f.stage ?? 1) === stageNum);
+      if (s.format === "knockout" && fix.length > 0) {
+        const byRound: Record<number, any[]> = {};
+        for (const f of fix) {
+          const r = f.round ?? 1;
+          (byRound[r] ??= []).push(f);
+        }
+        const rounds = Object.keys(byRound).map(Number).sort((a, b) => a - b);
+        const maxR = rounds[rounds.length - 1] ?? 1;
+        if (rounds.length > 1) {
+          for (const r of rounds) {
+            items.push({
+              key: `${stageNum}-${r}`,
+              stageNum,
+              round: r,
+              name: knockoutRoundLabel(r, byRound[r].length, maxR),
+            });
+          }
+          continue;
+        }
+      }
+      items.push({
+        key: String(stageNum),
+        stageNum,
+        round: null,
+        name: s.name ?? `Stage ${stageNum}`,
+      });
+    }
+    return items;
+  }, [isMultiStage, stages, allFixtures]);
+
+  const effectiveRound = useMemo(() => {
+    if (activeRound != null && !Number.isNaN(activeRound)) return activeRound;
+    const koNav = stageNavItems.filter((i) => i.stageNum === activeStageNum && i.round != null);
+    if (koNav.length > 0) return koNav[0].round;
+    return null;
+  }, [activeRound, stageNavItems, activeStageNum]);
+
+  const stageFix = useMemo(() => {
+    if (effectiveRound == null) return stageFixAll;
+    return stageFixAll.filter((f: any) => (f.round ?? 1) === effectiveRound);
+  }, [stageFixAll, effectiveRound]);
 
   // Group fixtures by round and group
   const activeStage = stages.find((s: any) => s.stageOrder === activeStageNum);
@@ -480,13 +545,15 @@ export default function TournamentSpectator() {
 
   const fixturesByRound = useMemo(() => {
     if (isRoundRobin) return null;
+    // Bracket-style view: show all rounds of the knockout stage
+    const source = stageFixAll;
     const map: Record<number, any[]> = {};
-    for (const f of stageFix) {
+    for (const f of source) {
       const r = f.round ?? 1;
       (map[r] ??= []).push(f);
     }
     return map;
-  }, [stageFix, isRoundRobin]);
+  }, [stageFixAll, isRoundRobin]);
 
   const maxRound = useMemo(() => {
     if (!fixturesByRound) return 1;
@@ -653,12 +720,13 @@ export default function TournamentSpectator() {
       {/* ── Stage selector (multi-stage) ── */}
       {isMultiStage && (
         <div style={{ display: "flex", gap: "6px", padding: "0 16px 14px", overflowX: "auto" }}>
-          {stages.map((s: any) => {
-            const active = s.stageOrder === activeStageNum;
+          {stageNavItems.map((item) => {
+            const active = item.stageNum === activeStageNum
+              && (item.round == null ? effectiveRound == null : item.round === effectiveRound);
             return (
               <button
-                key={s.stageOrder}
-                onClick={() => setStage(s.stageOrder)}
+                key={item.key}
+                onClick={() => setStageNav(item.stageNum, item.round)}
                 style={{
                   flexShrink: 0, padding: "6px 14px", borderRadius: "999px", fontSize: "12px", fontWeight: "700",
                   backgroundColor: active ? "#F59E0B" : "rgba(255,255,255,0.05)",
@@ -666,7 +734,7 @@ export default function TournamentSpectator() {
                   border: "none", cursor: "pointer",
                 }}
               >
-                {s.name}
+                {item.name}
               </button>
             );
           })}
