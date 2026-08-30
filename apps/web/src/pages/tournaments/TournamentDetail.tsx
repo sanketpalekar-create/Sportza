@@ -115,14 +115,6 @@ function deriveWinner(
   return { t1Wins: false, t2Wins: false };
 }
 
-function knockoutRoundLabel(round: number, maxRound: number): string {
-  if (round === maxRound)     return "Final";
-  if (round === maxRound - 1) return "Semis";
-  if (round === maxRound - 2) return "QF";
-  const remaining = Math.pow(2, maxRound - round + 1);
-  return `R${remaining}`;
-}
-
 function isTBD(ref: any): boolean {
   if (!ref) return true;
   if (ref.bye === true) return false;
@@ -1136,7 +1128,9 @@ export default function TournamentDetail() {
                     return rounds.map(r => (
                       <div key={r} className="mb-3">
                         <p className="text-[#475569] mb-1.5 ml-1" style={{ fontSize: "10px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                          {isRoundRobin ? `Round ${r}` : knockoutRoundLabel(r, maxRound)}
+                          {isRoundRobin
+                            ? `Round ${r}`
+                            : knockoutRoundLabel(r, stageFix.filter((f: any) => (f.round ?? 1) === r).length, maxRound)}
                           {r === maxRound && bestOf ? ` · Best of ${bestOf}` : ""}
                         </p>
                         {stageFix.filter((f: any) => (f.round ?? 1) === r).map((f: any, i: number) => (
@@ -2596,7 +2590,7 @@ function BracketView({ fixtures, maxRound, isTournamentActive, isStarting, onSco
                       fontSize: "10px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.07em",
                       color: isFinalRound ? "#F59E0B" : "#64748B",
                     }}>
-                      {isFinalRound ? "Final" : knockoutRoundLabel(r, maxRound)}
+                      {isFinalRound ? "Final" : knockoutRoundLabel(r, rFix.length, maxRound)}
                     </span>
                   </div>
                 </div>

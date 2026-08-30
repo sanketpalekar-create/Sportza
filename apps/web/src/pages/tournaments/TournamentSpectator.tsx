@@ -50,14 +50,6 @@ function flatScore(scores: any): { a: string; b: string } | null {
   return null;
 }
 
-function knockoutRoundLabel(round: number, maxRound: number): string {
-  if (round === maxRound)     return "Final";
-  if (round === maxRound - 1) return "Semi-Finals";
-  if (round === maxRound - 2) return "Quarter-Finals";
-  const remaining = Math.pow(2, maxRound - round + 1);
-  return `Round of ${remaining}`;
-}
-
 function isTBD(ref: any): boolean {
   return !ref?.name && (ref?.bye === true || ref?.round != null);
 }
@@ -814,7 +806,7 @@ export default function TournamentSpectator() {
               .map(([round, fixes]) => (
                 <div key={round}>
                   <p style={{ fontSize: "10px", fontWeight: "700", color: "#475569", letterSpacing: "0.1em", marginBottom: "8px" }}>
-                    {knockoutRoundLabel(Number(round), maxRound)}
+                    {knockoutRoundLabel(Number(round), fixes.length, maxRound)}
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {fixes.map((f: any) => (
