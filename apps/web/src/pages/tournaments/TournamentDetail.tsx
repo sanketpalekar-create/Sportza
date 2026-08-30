@@ -253,7 +253,7 @@ export default function TournamentDetail() {
   const { data: coOrgSearchRes } = useSearchUsers(coOrgSearch);
   const coOrgSearchResults: any[] = (coOrgSearchRes as any)?.users ?? [];
 
-  // Backfill QF/SF/Final when earlier KO rounds are done but later slots still TBD
+  // Backfill / repair QF when R16 done but slots wrong or still TBD
   const bracketSyncAttempted = useRef(false);
   const syncBracketMutate = syncBracket.mutate;
   useEffect(() => {
@@ -272,13 +272,25 @@ export default function TournamentDetail() {
     );
     if (!hasCompletedKo) return;
 
+    const byRoundCount: Record<number, number> = {};
+    for (const f of koFixtures) {
+      const r = f.round ?? 1;
+      byRoundCount[r] = (byRoundCount[r] ?? 0) + 1;
+    }
+    const matchOrdersBroken = koFixtures.some((f: any) => {
+      const r = f.round ?? 1;
+      return (f.matchOrder ?? 0) > (byRoundCount[r] ?? 0);
+    });
+
     const hasUnresolvedDownstream = koFixtures.some((f: any) => {
       const done =
         f.status === "completed" || f.match?.status === "completed";
       if (done) return false;
       return isTBD(f.team1Ref) || isTBD(f.team2Ref);
     });
-    if (!hasUnresolvedDownstream) return;
+
+    // Also re-sync when QF already filled but slots were wrong (manager opens detail once)
+    if (!hasUnresolvedDownstream && !matchOrdersBroken) return;
 
     bracketSyncAttempted.current = true;
     syncBracketMutate(undefined, {
@@ -1133,7 +1145,11 @@ export default function TournamentDetail() {
                             : knockoutRoundLabel(r, stageFix.filter((f: any) => (f.round ?? 1) === r).length, maxRound)}
                           {r === maxRound && bestOf ? ` · Best of ${bestOf}` : ""}
                         </p>
-                        {stageFix.filter((f: any) => (f.round ?? 1) === r).map((f: any, i: number) => (
+                        {stageFix
+                          .filter((f: any) => (f.round ?? 1) === r)
+                          .slice()
+                          .sort((a: any, b: any) => (a.matchOrder ?? 0) - (b.matchOrder ?? 0))
+                          .map((f: any, i: number) => (
                           <FixtureCard
                             key={f.id ?? i}
                             fixture={f}

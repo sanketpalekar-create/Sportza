@@ -141,8 +141,8 @@ export async function propagateMatchResult(
     // Never rewrite a fixture that already has a live/completed match linked
     const destLocked = dest.matchId != null;
 
-    let nextTeam1Ref = dest.team1Ref;
-    let nextTeam2Ref = dest.team2Ref;
+    let nextTeam1Ref: object = dest.team1Ref as object;
+    let nextTeam2Ref: object = dest.team2Ref as object;
     let nextTeam1Type = dest.team1Type;
     let nextTeam2Type = dest.team2Type;
     let changed = false;
@@ -158,7 +158,7 @@ export async function propagateMatchResult(
         if (dest.team1Type === "loser") merged.slotKind = "loser";
         else if (dest.team1Type === "winner") merged.slotKind = "winner";
         else if (asRef(dest.team1Ref)?.slotKind) merged.slotKind = asRef(dest.team1Ref)!.slotKind;
-        nextTeam1Ref = merged;
+        nextTeam1Ref = merged as object;
         nextTeam1Type = "team";
         changed = true;
       }
@@ -175,7 +175,7 @@ export async function propagateMatchResult(
         if (dest.team2Type === "loser") merged.slotKind = "loser";
         else if (dest.team2Type === "winner") merged.slotKind = "winner";
         else if (asRef(dest.team2Ref)?.slotKind) merged.slotKind = asRef(dest.team2Ref)!.slotKind;
-        nextTeam2Ref = merged;
+        nextTeam2Ref = merged as object;
         nextTeam2Type = "team";
         changed = true;
       }
@@ -187,9 +187,9 @@ export async function propagateMatchResult(
       where: { id: dest.id },
       data: {
         team1Type: nextTeam1Type,
-        team1Ref: nextTeam1Ref as object,
+        team1Ref: nextTeam1Ref,
         team2Type: nextTeam2Type,
-        team2Ref: nextTeam2Ref as object,
+        team2Ref: nextTeam2Ref,
       },
     });
     updates += 1;
@@ -283,6 +283,10 @@ export async function syncBracketAfterMatch(matchId: number): Promise<void> {
   });
   if (!fixture?.tournamentId) return;
 
+  // Fix global matchOrder / mis-slotted R16 before propagating winners
+  const { repairKnockoutBracketSlots } = await import("./tournament-bracket-repair");
+  await repairKnockoutBracketSlots(fixture.tournamentId);
+
   const match = await prisma.match.findUnique({
     where: { id: matchId },
     select: { winnerTeam: true, teams: true, scores: true, status: true, tournamentId: true },
@@ -311,5 +315,11 @@ export async function syncBracketAfterMatch(matchId: number): Promise<void> {
   }
 
   // Full ordered sync fills any earlier completed R16 → QF gaps
-  await syncKnockoutBracket(fixture.tournamentId);
+  // Re-read fixture in case matchOrder was remapped
+  const refreshed = await prisma.tournamentFixture.findFirst({ where: { matchId } });
+  if (refreshed) {
+    await syncKnockoutBracket(refreshed.tournamentId);
+  } else {
+    await syncKnockoutBracket(fixture.tournamentId);
+  }
 }

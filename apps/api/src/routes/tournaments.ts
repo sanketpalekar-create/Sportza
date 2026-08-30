@@ -18,6 +18,7 @@ import {
 import { resolveTournamentSport } from "../lib/tournament-sport";
 import { createNotification, createBulkNotifications, NotifType } from "../services/notificationService";
 import { syncKnockoutBracket, isPointerRef } from "../lib/tournament-bracket-resolve";
+import { repairKnockoutBracketSlots } from "../lib/tournament-bracket-repair";
 
 /** Extract all user IDs from a tournament's players JSON array. */
 function rosterUserIds(players: unknown): number[] {
@@ -245,19 +246,26 @@ function standardBracketPositions(n: number): number[] {
 }
 
 /** Knockout bracket with proper byes. Round 1 has real teams; later rounds
- *  reference the winner of a previous fixture (team1Type/team2Type = "winner"). */
+ *  reference the winner of a previous fixture (team1Type/team2Type = "winner").
+ *  matchOrder is within-round (1..n) so winner refs `{ match: k }` resolve correctly. */
 function knockoutBracket(
   teams: unknown[],
   stage: number
 ): Array<{
   round: number;
+  matchOrder: number;
   team1Type: string; team1: unknown;
   team2Type: string; team2: unknown;
 }> {
   const arr    = [...teams];
   const size   = nextPowerOf2(arr.length);
   const rounds = Math.log2(size);
-  const result: Array<{ round: number; team1Type: string; team1: unknown; team2Type: string; team2: unknown }> = [];
+  const result: Array<{
+    round: number;
+    matchOrder: number;
+    team1Type: string; team1: unknown;
+    team2Type: string; team2: unknown;
+  }> = [];
 
   // Pad with byes
   while (arr.length < size) arr.push(null);
@@ -273,6 +281,7 @@ function knockoutBracket(
     const t2 = seeded[m * 2 + 1];
     result.push({
       round: 1,
+      matchOrder: m + 1,
       team1Type: "team", team1: t1 ?? { bye: true },
       team2Type: "team", team2: t2 ?? { bye: true },
     });
@@ -284,6 +293,7 @@ function knockoutBracket(
     for (let m = 0; m < count; m++) {
       result.push({
         round,
+        matchOrder: m + 1,
         team1Type: "winner", team1: { stage, round: round - 1, match: m * 2 + 1 },
         team2Type: "winner", team2: { stage, round: round - 1, match: m * 2 + 2 },
       });
@@ -375,7 +385,7 @@ router.get(
         include: {
           venue:     true,
           createdBy: { select: { id: true, name: true } },
-          fixtures:  { include: { match: true } },
+          fixtures: { include: { match: true }, orderBy: [{ stage: "asc" }, { round: "asc" }, { matchOrder: "asc" }] },
           matches:   true,
           coOrganizers: {
             include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
@@ -809,7 +819,7 @@ router.post(
                 tournamentId: id,
                 stage:        stageNum,
                 round:        f.round,
-                matchOrder:   matchOrder++,
+                matchOrder:   f.matchOrder,
                 team1Type:    f.team1Type,
                 team1Ref:     f.team1 as object,
                 team2Type:    f.team2Type,
@@ -846,7 +856,7 @@ router.post(
                 tournamentId: id,
                 stage:        legacyStage,
                 round:        f.round,
-                matchOrder:   matchOrder++,
+                matchOrder:   f.matchOrder,
                 team1Type:    f.team1Type,
                 team1Ref:     f.team1 as object,
                 team2Type:    f.team2Type,
@@ -1076,7 +1086,7 @@ router.post(
           await prisma.tournamentFixture.create({
             data: {
               tournamentId: id, stage: nextStageNum,
-              round: f.round, matchOrder: matchOrder++,
+              round: f.round, matchOrder: f.matchOrder,
               team1Type: f.team1Type, team1Ref: f.team1 as object,
               team2Type: f.team2Type, team2Ref: f.team2 as object,
             },
@@ -1146,6 +1156,7 @@ router.post(
         throw new BadRequestError("Only organizer or co-organizer can sync the bracket");
       }
 
+      const repair = await repairKnockoutBracketSlots(id);
       const result = await syncKnockoutBracket(id);
       const fixtures = await prisma.tournamentFixture.findMany({
         where: { tournamentId: id },
@@ -1155,8 +1166,9 @@ router.post(
 
       res.json({
         success: true,
-        message: `Bracket synced (${result.propagated} slots updated)`,
-        data: { propagated: result.propagated, fixtures },
+        message: `Bracket synced (${result.propagated} slots updated` +
+          `${repair.r16Remapped || repair.renumbered ? "; slots repaired" : ""})`,
+        data: { propagated: result.propagated, repair, fixtures },
       });
     } catch (err) { next(err); }
   }
