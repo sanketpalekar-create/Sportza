@@ -403,7 +403,7 @@ router.post(
       }
 
       const sport = await resolveTournamentSport({ sport: body.sport });
-      if (!sport) throw new NotFoundError(`Sport "${body.sport}" not found in sports table`);
+      if (!sport) throw new BadRequestError(`Sport "${body.sport}" was not found. Run db:seed:reference on this database.`);
 
       const tournament = await prisma.tournament.create({
         data: {
@@ -454,7 +454,7 @@ router.put(
 
       if (body.sport !== undefined) {
         const sport = await resolveTournamentSport({ sport: body.sport });
-        if (!sport) throw new NotFoundError(`Sport "${body.sport}" not found in sports table`);
+        if (!sport) throw new BadRequestError(`Sport "${body.sport}" was not found. Run db:seed:reference on this database.`);
         updateData.sport = sport.name;
         updateData.sportId = sport.id;
       }
@@ -1163,7 +1163,7 @@ router.post(
         sportId: tournament.sportId,
         sport: tournament.sport,
       });
-      if (!sport) throw new NotFoundError(`Sport "${tournament.sport}" not found in sports table`);
+      if (!sport) throw new BadRequestError(`Sport "${tournament.sport}" was not found. Run db:seed:reference on this database.`);
 
       // Backfill sportId on legacy tournaments so later lookups are stable
       if (tournament.sportId == null || tournament.sport !== sport.name) {

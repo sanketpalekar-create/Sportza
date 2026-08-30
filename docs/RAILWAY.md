@@ -82,6 +82,32 @@ See `deploy/railway.env.example` for the full list.
 
 Schema sync runs automatically on start (`prisma db push` — this repo does not have a full migrate history).
 
+### First production DB sync (reference data)
+
+Schema alone is not enough. New Railway MySQL databases have **no sports rows**, so tournament start-match fails with “Sport Pickleball was not found”.
+
+**Do not run** `pnpm db:seed` on production — that loads demo users/venues and resets passwords.
+
+After the first successful deploy, open **Sportza → Console** (cwd is usually `apps/api`) and run once:
+
+```bash
+pnpm db:seed:reference
+pnpm db:seed:picklethon-august
+```
+
+What that does:
+
+1. `db:seed:reference` — upserts sports + formats + rulebooks; backfills `tournament.sportId` for existing events (e.g. Pickle test).
+2. `db:seed:picklethon-august` — creates/patches the Picklethon August tournament (requires pickleball sport from step 1).
+
+Also set **Variables** → `NODE_ENV=production` so `/api/health` reports production.
+
+Verify:
+
+- Create-tournament sport picker lists Pickleball
+- Pickle test → start a fixture
+- Picklethon August appears under tournaments
+
 ### If sportza.in shows `{"code":"NOT_FOUND","message":"Route not found"}`
 
 The domain is on the API service but the image has **no SPA build** yet (old deploy). Redeploy **api** with the updated Dockerfile that copies `apps/web/dist` → `apps/api/public`. After deploy, `/` serves the React app.
@@ -162,6 +188,7 @@ Not needed if `sportza.in` is on **api** (SPA is baked into that image). Only ad
 | Web calls wrong host | Set build-time `VITE_API_URL=/api` and redeploy api |
 | CORS blocked | `CLIENT_ORIGIN` must include `https://sportza.in` |
 | API crash on boot | Check MySQL reference: `DATABASE_URL` must be a `mysql://…` URL Prisma accepts |
+| `Sport "…" was not found` on start-match | Run `pnpm db:seed:reference` in Sportza Console (see §2) |
 | `migrate found failed migrations` | Clear failed row (SQL in §2 above) + redeploy api with updated Dockerfile |
 | Redis / OTP fails | Confirm `REDIS_URL` reference from Redis service |
 | Google login broken | Add `https://sportza.in` to Google Authorized JavaScript origins |

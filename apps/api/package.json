@@ -14,6 +14,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:reference": "tsx prisma/seed-reference.ts",
     "db:seed:nashik-open": "tsx prisma/seed-nashik-open.ts",
     "db:patch:nashik-open": "tsx prisma/patch-nashik-open.ts",
     "db:patch:picklethon-august": "tsx prisma/patch-picklethon-august.ts",
