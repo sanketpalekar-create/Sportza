@@ -17,6 +17,7 @@
     "db:seed:nashik-open": "tsx prisma/seed-nashik-open.ts",
     "db:patch:nashik-open": "tsx prisma/patch-nashik-open.ts",
     "db:patch:picklethon-august": "tsx prisma/patch-picklethon-august.ts",
+    "db:seed:picklethon-august": "tsx prisma/seed-picklethon-august.ts",
     "db:seed:pickleball-ratings": "tsx prisma/seed-pickleball-ratings.ts",
     "db:seed:venue-images": "tsx prisma/seed-venue-images.ts",
     "db:backfill:padel": "tsx prisma/backfills/padel-reference-backfill.ts",
