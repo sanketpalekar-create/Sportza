@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@sportza/api-client";
-import { Calendar, MapPin, Users, Trophy } from "lucide-react";
+import { Calendar, ExternalLink, MapPin, Users, Trophy } from "lucide-react";
 import { format } from "date-fns";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -80,8 +80,9 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
   const isDone     = matchStatus === "completed";
   const score      = flatScore(fixture.match?.scores);
   const isFinal    = !isRoundRobin && (fixture.round ?? 1) === maxRound;
-  const matchId: number | null = fixture.match?.id ?? null;
+  const matchId: number | null = fixture.match?.id ?? fixture.matchId ?? null;
   const gameStr = gameScores(fixture.match?.scores);
+  const scoreboardHref = matchId && (isLive || isDone) ? `/scoreboard/${matchId}` : null;
 
   if (isBye) return null;
 
@@ -135,7 +136,7 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
               {gameStr}
             </p>
           )}
-          {isLive && (
+          {isLive && !scoreboardHref && (
             <span style={{
               fontSize: "8px", fontWeight: "800", color: "#22C55E",
               backgroundColor: "rgba(34,197,94,0.15)", borderRadius: "4px",
@@ -144,7 +145,7 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
               LIVE
             </span>
           )}
-          {isDone && (
+          {isDone && !scoreboardHref && (
             <span style={{
               fontSize: "8px", fontWeight: "700", color: "#64748B",
               marginTop: "2px", letterSpacing: "0.5px",
@@ -169,31 +170,47 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
             {t2Name}
           </p>
         </div>
-      </div>
 
-      {/* Watch Live button — only for in-progress matches with a match record */}
-      {isLive && matchId && (
-        <a
-          href={`/scoreboard/${matchId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-            marginTop: "10px", padding: "6px 12px", borderRadius: "8px",
-            backgroundColor: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)",
-            textDecoration: "none", cursor: "pointer",
-          }}
-        >
-          <span style={{
-            width: "6px", height: "6px", borderRadius: "50%",
-            backgroundColor: "#22C55E", flexShrink: 0,
-            boxShadow: "0 0 6px #22C55E",
-          }} />
-          <span style={{ fontSize: "11px", fontWeight: "700", color: "#22C55E", letterSpacing: "0.3px" }}>
-            Watch Live Scoreboard
-          </span>
-        </a>
-      )}
+        {scoreboardHref && (
+          <a
+            href={scoreboardHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={isLive ? `Open live scoreboard for ${t1Name} vs ${t2Name}` : `Open scoreboard for ${t1Name} vs ${t2Name}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              flexShrink: 0,
+              padding: "5px 8px",
+              borderRadius: "999px",
+              textDecoration: "none",
+              backgroundColor: isLive ? "rgba(34,197,94,0.12)" : "rgba(59,130,246,0.1)",
+              border: `1px solid ${isLive ? "rgba(34,197,94,0.35)" : "rgba(59,130,246,0.25)"}`,
+            }}
+          >
+            {isLive && (
+              <span style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                backgroundColor: "#22C55E",
+                boxShadow: "0 0 6px #22C55E",
+                flexShrink: 0,
+              }} />
+            )}
+            <span style={{
+              fontSize: "9px",
+              fontWeight: 800,
+              letterSpacing: "0.4px",
+              color: isLive ? "#22C55E" : "#60A5FA",
+            }}>
+              {isLive ? "LIVE" : "SCORE"}
+            </span>
+            <ExternalLink style={{ width: "10px", height: "10px", color: isLive ? "#22C55E" : "#60A5FA" }} />
+          </a>
+        )}
+      </div>
     </div>
   );
 }
