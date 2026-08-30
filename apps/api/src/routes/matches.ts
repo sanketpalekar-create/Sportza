@@ -445,11 +445,16 @@ router.put(
         throw new ForbiddenError("Only the match creator or a tournament co-organizer can update the score");
       }
 
+      const previouslyCompleted = match.status === "completed";
+      const shouldComplete = Boolean(winnerTeam);
+
       const updated = await prisma.match.update({
         where: { id },
         data: {
           scores: scores as object,
           winnerTeam: winnerTeam ?? undefined,
+          // Correct Score / explicit winner → complete so standings pick it up
+          ...(shouldComplete ? { status: "completed" } : {}),
         },
       });
 
@@ -460,6 +465,18 @@ router.put(
         winnerTeam: updated.winnerTeam,
         status: updated.status,
       });
+
+      if (shouldComplete) {
+        emitToMatch(id, "match:status", { matchId: id, status: "completed" });
+        // Avoid double-counting Elo / player stats when correcting an already-processed match
+        if (!previouslyCompleted || !match.statsProcessed) {
+          await processMatchResult(id);
+        }
+        await prisma.tournamentFixture.updateMany({
+          where: { matchId: id },
+          data:  { status: "completed" },
+        });
+      }
 
       res.json({ success: true, data: updated });
     } catch (err) {
@@ -631,6 +648,12 @@ router.put(
       });
 
       emitToMatch(id, "match:status", { matchId: id, status: "live" });
+
+      // Keep the linked tournament fixture in sync
+      await prisma.tournamentFixture.updateMany({
+        where: { matchId: id },
+        data:  { status: "in_progress" },
+      });
 
       // Notify all players (non-blocking)
       const livePlayerIds = extractPlayerIds(updated.teams);

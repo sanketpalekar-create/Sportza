@@ -427,9 +427,14 @@ export default function TournamentDetail() {
         setStartingFixtureId(null);
         navigate(`/matches/${data.matchId}`);
       },
-      onError: () => {
+      onError: (err: any) => {
         setStartingFixtureId(null);
-        setActionError("Couldn't start this match. Please try again.");
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Couldn't start this match. Please try again.";
+        setActionError(msg);
       },
     });
   }

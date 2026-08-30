@@ -15,6 +15,7 @@ import {
   getSportPlayerStatSchema,
   normalizePlayerStats,
 } from "../lib/tournament-player-stats";
+import { resolveTournamentSport } from "../lib/tournament-sport";
 import { createNotification, createBulkNotifications, NotifType } from "../services/notificationService";
 
 /** Extract all user IDs from a tournament's players JSON array. */
@@ -23,6 +24,45 @@ function rosterUserIds(players: unknown): number[] {
   return players
     .filter((p) => p && typeof p === "object" && typeof (p as any).userId === "number")
     .map((p) => (p as any).userId as number);
+}
+
+/** Keep teams[].playerNames aligned with Tournament.players roster. */
+function syncTeamPlayerNames(teams: any[], players: any[]): any[] {
+  return teams.map((t) => ({
+    ...t,
+    playerNames: players
+      .filter((p: any) => p?.teamName === t.name)
+      .map((p: any) => p.playerName as string)
+      .filter(Boolean),
+  }));
+}
+
+/** Resolve court player names: roster → teams.playerNames → name split. */
+function resolveFixturePlayerNames(
+  teamName: string,
+  teams: any[],
+  players: any[]
+): string[] {
+  const fromRoster = players
+    .filter((p: any) => p?.teamName === teamName)
+    .map((p: any) => p.playerName as string)
+    .filter(Boolean);
+  if (fromRoster.length > 0) return fromRoster;
+
+  const tData = teams.find((t: any) => t.name === teamName);
+  if ((tData?.playerNames?.length ?? 0) > 0) return tData!.playerNames as string[];
+
+  const sep = teamName.includes("&") ? "&" : "/";
+  const parts = teamName.split(sep).map((s) => s.trim()).filter(Boolean);
+  return [parts[0] ?? teamName, parts[1] ?? parts[0] ?? teamName];
+}
+
+/** Patch a team name inside a fixture team ref JSON object (pending only). */
+function renameTeamInRef(ref: Prisma.JsonValue, oldName: string, newName: string): Prisma.JsonValue {
+  if (!ref || typeof ref !== "object" || Array.isArray(ref)) return ref;
+  const r = ref as Record<string, unknown>;
+  if (r.name === oldName) return { ...r, name: newName } as Prisma.JsonValue;
+  return ref;
 }
 
 // ─── Co-organizer auth helpers ────────────────────────────────────────────────
@@ -362,10 +402,14 @@ router.post(
         if (!venue) throw new NotFoundError("Venue");
       }
 
+      const sport = await resolveTournamentSport({ sport: body.sport });
+      if (!sport) throw new NotFoundError(`Sport "${body.sport}" not found in sports table`);
+
       const tournament = await prisma.tournament.create({
         data: {
           name:        body.name,
-          sport:       body.sport,
+          sport:       sport.name,
+          sportId:     sport.id,
           format:      body.format,
           description: body.description ?? null,
           maxTeams:    body.maxTeams ?? null,
@@ -400,7 +444,6 @@ router.put(
 
       const updateData: Record<string, unknown> = {};
       if (body.name        !== undefined) updateData.name        = body.name;
-      if (body.sport       !== undefined) updateData.sport       = body.sport;
       if (body.format      !== undefined) updateData.format      = body.format;
       if (body.description !== undefined) updateData.description = body.description;
       if (body.maxTeams    !== undefined) updateData.maxTeams    = body.maxTeams;
@@ -408,19 +451,85 @@ router.put(
       if (body.startDate   !== undefined) updateData.startDate   = new Date(body.startDate);
       if (body.endDate     !== undefined) updateData.endDate     = new Date(body.endDate);
       if (body.stages      !== undefined) updateData.stages      = body.stages as object;
+
+      if (body.sport !== undefined) {
+        const sport = await resolveTournamentSport({ sport: body.sport });
+        if (!sport) throw new NotFoundError(`Sport "${body.sport}" not found in sports table`);
+        updateData.sport = sport.name;
+        updateData.sportId = sport.id;
+      }
+
+      const renames: Array<{ oldName: string; newName: string }> = [];
+
       if (body.teams !== undefined) {
-        // Merge incoming teams with existing to preserve metadata (groupIndex, playerNames, players).
-        // The edit form only sends { name } objects; we keep all extra fields from the existing team record.
+        // Merge incoming teams with existing to preserve metadata (groupIndex, playerNames, players, aliases).
+        // Edit form sends { name } in the same order as existing teams — detect renames by index.
         const existingTeams = (tournament.teams as any[]) ?? [];
-        const existingMap   = new Map(existingTeams.map((t: any) => [t.name, t]));
-        const merged = (body.teams as any[]).map((incoming: any) => {
-          const existing = existingMap.get(incoming.name);
-          return existing ? { ...existing, ...incoming } : incoming;
+        const incoming = body.teams as any[];
+        const merged = incoming.map((row: any, i: number) => {
+          const byName = existingTeams.find((t: any) => t.name === row.name);
+          if (byName) return { ...byName, ...row };
+
+          const byIndex = existingTeams[i];
+          if (byIndex && byIndex.name !== row.name) {
+            const aliases = Array.isArray(byIndex.aliases) ? [...byIndex.aliases] : [];
+            if (!aliases.includes(byIndex.name)) aliases.push(byIndex.name);
+            renames.push({ oldName: byIndex.name, newName: row.name });
+            return { ...byIndex, ...row, name: row.name, aliases };
+          }
+          return row;
         });
-        updateData.teams = merged as object;
+
+        // Keep roster teamName in sync with renames
+        let players = (tournament.players as any[]) ?? [];
+        if (renames.length > 0) {
+          for (const { oldName, newName } of renames) {
+            players = players.map((p: any) =>
+              p.teamName === oldName ? { ...p, teamName: newName } : p
+            );
+          }
+          updateData.players = players as object;
+        }
+
+        updateData.teams = syncTeamPlayerNames(merged, players) as object;
       }
 
       const updated = await prisma.tournament.update({ where: { id }, data: updateData });
+
+      // Update pending (unscored) fixture refs when a team is renamed
+      if (renames.length > 0) {
+        const pending = await prisma.tournamentFixture.findMany({
+          where: {
+            tournamentId: id,
+            matchId: null,
+            status: { not: "bye" },
+          },
+        });
+        for (const fixture of pending) {
+          let team1Ref = fixture.team1Ref;
+          let team2Ref = fixture.team2Ref;
+          let changed = false;
+          for (const { oldName, newName } of renames) {
+            const next1 = renameTeamInRef(team1Ref, oldName, newName);
+            const next2 = renameTeamInRef(team2Ref, oldName, newName);
+            if (next1 !== team1Ref || next2 !== team2Ref) {
+              team1Ref = next1;
+              team2Ref = next2;
+              changed = true;
+            }
+          }
+          if (changed) {
+            await prisma.tournamentFixture.update({
+              where: { id: fixture.id },
+              data: {
+                team1Ref: team1Ref as Prisma.InputJsonValue,
+                team2Ref: team2Ref as Prisma.InputJsonValue,
+              },
+            });
+          }
+        }
+      }
+
       res.json({ success: true, data: updated });
     } catch (err) { next(err); }
   }
@@ -829,6 +938,20 @@ router.post(
       if (!currentStage) throw new BadRequestError("Invalid stage number");
 
       const stageFixtures = tournament.fixtures;
+
+      // Gate: every scorable fixture must be completed or bye (mirror frontend stageComplete)
+      const scorableFixtures = stageFixtures.filter(
+        (f) => !(f.team1Type === "winner" && f.team2Type === "winner")
+      );
+      const incomplete = scorableFixtures.filter(
+        (f) => f.status !== "completed" && f.status !== "bye"
+      );
+      if (scorableFixtures.length === 0 || incomplete.length > 0) {
+        throw new BadRequestError(
+          "All matches in this stage must be completed before advancing"
+        );
+      }
+
       const format        = currentStage.format ?? tournament.format;
       let advancingTeams: unknown[] = [];
 
@@ -1035,37 +1158,29 @@ router.post(
         return res.json({ success: true, matchId: fixture.matchId, existing: true });
       }
 
-      // Resolve sport — sports in the DB are stored lowercase (e.g. "pickleball")
-      // Tournament.sport comes from the wizard as title-case (e.g. "Pickleball")
-      // MySQL does not support Prisma's mode:"insensitive" on equals, so normalise manually
-      const sportLookupName = tournament.sport.toLowerCase().replace(/\s+/g, "_");
-      const sportLookupName2 = tournament.sport.toLowerCase();
-      const sport = await prisma.sport.findFirst({
-        where: { OR: [{ name: sportLookupName }, { name: sportLookupName2 }, { name: tournament.sport }] },
+      // Prefer sportId; fall back to name / displayName variants for legacy tournaments
+      const sport = await resolveTournamentSport({
+        sportId: tournament.sportId,
+        sport: tournament.sport,
       });
       if (!sport) throw new NotFoundError(`Sport "${tournament.sport}" not found in sports table`);
+
+      // Backfill sportId on legacy tournaments so later lookups are stable
+      if (tournament.sportId == null || tournament.sport !== sport.name) {
+        await prisma.tournament.update({
+          where: { id: tournamentId },
+          data: { sportId: sport.id, sport: sport.name },
+        });
+      }
 
       // Extract team names from the fixture refs (TBD slots are allowed — names default to placeholders)
       const t1Name = (fixture.team1Ref as any)?.name ?? "Team A";
       const t2Name = (fixture.team2Ref as any)?.name ?? "Team B";
 
-      // Look up playerNames from the tournament's teams JSON so they appear in court setup
       const allTeams = (tournament.teams as any[]) ?? [];
-      const t1Data = allTeams.find((t: any) => t.name === t1Name);
-      const t2Data = allTeams.find((t: any) => t.name === t2Name);
-
-      // Fallback: derive player names by splitting team name on & or / when the lookup misses
-      const splitTeamName = (n: string): [string, string] => {
-        const sep = n.includes("&") ? "&" : "/";
-        const parts = n.split(sep).map((s) => s.trim());
-        return [parts[0] ?? n, parts[1] ?? parts[0] ?? n];
-      };
-      const t1PlayerNames: string[] = (t1Data?.playerNames?.length ?? 0) > 0
-        ? t1Data!.playerNames
-        : splitTeamName(t1Name);
-      const t2PlayerNames: string[] = (t2Data?.playerNames?.length ?? 0) > 0
-        ? t2Data!.playerNames
-        : splitTeamName(t2Name);
+      const allPlayers = (tournament.players as any[]) ?? [];
+      const t1PlayerNames = resolveFixturePlayerNames(t1Name, allTeams, allPlayers);
+      const t2PlayerNames = resolveFixturePlayerNames(t2Name, allTeams, allPlayers);
 
       // Build a rich metadata label for the fixture round/stage
       const stageLabel = fixture.stage    ? `Stage ${fixture.stage}`    : "";
@@ -1084,10 +1199,20 @@ router.post(
         finalScoreType = stageCfg?.scoringSystem === "service"
           ? "pickleball_service"
           : "pickleball_rally";
+      } else if (finalScoreType === "padel") {
+        finalScoreType = "padel";
       }
 
-      // doubles: true when playersPerTeam >= 2 (falls back to false = singles when not set)
-      const doubles = ((stageCfg?.playersPerTeam as number | undefined) ?? 1) >= 2;
+      const playersPerTeam = (stageCfg?.playersPerTeam as number | undefined) ?? 1;
+      const doubles = playersPerTeam >= 2;
+
+      const scoreConfig: Record<string, unknown> = {
+        sport: finalScoreType,
+        doubles,
+      };
+      if (stageCfg?.targetScore != null) scoreConfig.targetScore = stageCfg.targetScore;
+      if (stageCfg?.bestOf != null) scoreConfig.bestOf = stageCfg.bestOf;
+      if (stageCfg?.scoringSystem != null) scoreConfig.scoringSystem = stageCfg.scoringSystem;
 
       // Create the Match record
       const match = await prisma.match.create({
@@ -1096,6 +1221,8 @@ router.post(
           sportName:     sport.name,
           formatName:    formatLabel || "Tournament Match",
           tournamentId,
+          venueId:       tournament.venueId ?? undefined,
+          playersPerTeam,
           teams:         {
             A: { name: t1Name, playerNames: t1PlayerNames },
             B: { name: t2Name, playerNames: t2PlayerNames },
@@ -1103,11 +1230,11 @@ router.post(
           scoreType:     finalScoreType,
           // Seed a minimal config block so normaliseState picks up doubles correctly
           scores:        {
-            config:           { sport: finalScoreType, doubles },
+            config:           scoreConfig,
             setupComplete:    doubles ? false : true,
             setupBaselineAck: doubles ? { A: false, B: false } : { A: true, B: true },
             trackPositions:   false,
-          },
+          } as Prisma.InputJsonValue,
           matchDate:     new Date(),
           status:        "scheduled",
           createdById:   userId,
@@ -1326,7 +1453,7 @@ router.post(
       await prisma.tournament.update({
         where: { id },
         data:  {
-          teams: updatedTeams as Prisma.InputJsonValue,
+          teams: syncTeamPlayerNames(updatedTeams, nextPlayers) as Prisma.InputJsonValue,
           registrations: updatedRegs as Prisma.InputJsonValue,
           players: nextPlayers as Prisma.InputJsonValue,
         },
@@ -1425,9 +1552,13 @@ router.post(
         assists:    0,
         points:     0,
       };
+      const nextPlayers = [...players, newPlayer];
       await prisma.tournament.update({
         where: { id },
-        data:  { players: [...players, newPlayer] as Prisma.InputJsonValue },
+        data:  {
+          players: nextPlayers as Prisma.InputJsonValue,
+          teams: syncTeamPlayerNames(teams, nextPlayers) as Prisma.InputJsonValue,
+        },
       });
 
       // Notify the added user if they have an account (non-blocking)
@@ -1504,7 +1635,10 @@ router.post(
 
       await prisma.tournament.update({
         where: { id },
-        data:  { players: players as Prisma.InputJsonValue },
+        data:  {
+          players: players as Prisma.InputJsonValue,
+          teams: syncTeamPlayerNames(teams, players) as Prisma.InputJsonValue,
+        },
       });
       res.status(201).json({ success: true, data: created, count: created.length });
     } catch (err) { next(err); }
@@ -1526,13 +1660,17 @@ router.delete(
       if (!tournament) throw new NotFoundError("Tournament");
       if (!isScorerOrAbove(tournament, req.userId!)) throw new BadRequestError("Only organizer or co-organizer can manage rosters");
 
+      const teams      = (tournament.teams as any[]) ?? [];
       const players    = (tournament.players as any[]) ?? [];
       const updated    = players.filter(
         (p: any) => !(p.teamName === teamName && p.playerName === playerName)
       );
       await prisma.tournament.update({
         where: { id },
-        data:  { players: updated as Prisma.InputJsonValue },
+        data:  {
+          players: updated as Prisma.InputJsonValue,
+          teams: syncTeamPlayerNames(teams, updated) as Prisma.InputJsonValue,
+        },
       });
       res.json({ success: true, message: "Player removed" });
     } catch (err) { next(err); }

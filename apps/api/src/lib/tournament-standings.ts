@@ -59,6 +59,19 @@ export function computeStandings(
   matches: Array<Record<string, any>>,
   teams: Array<Record<string, any>>
 ): StandingRow[] {
+  /** Map snapshot / alias names → current Tournament.teams[].name */
+  const aliasToCanonical = new Map<string, string>();
+  for (const t of teams) {
+    const name = (t?.name as string) || "";
+    if (!name) continue;
+    aliasToCanonical.set(name, name);
+    const aliases = Array.isArray(t.aliases) ? t.aliases : [];
+    for (const a of aliases) {
+      if (typeof a === "string" && a) aliasToCanonical.set(a, name);
+    }
+  }
+  const resolveName = (raw: string): string => aliasToCanonical.get(raw) ?? raw;
+
   const standings: Record<
     string,
     { played: number; won: number; drawn: number; lost: number; points: number; pointsFor: number; pointsAgainst: number }
@@ -74,20 +87,22 @@ export function computeStandings(
     if (m.status !== "completed") continue;
 
     const teamsData = (m.teams as Record<string, any>) ?? {};
-    const t1 =
+    const t1Raw =
       teamsData.A?.name ??
       (typeof teamsData.A === "string" ? teamsData.A : null) ??
       teamsData.team1?.name ??
       (typeof teamsData.team1 === "string" ? teamsData.team1 : null) ??
       "";
-    const t2 =
+    const t2Raw =
       teamsData.B?.name ??
       (typeof teamsData.B === "string" ? teamsData.B : null) ??
       teamsData.team2?.name ??
       (typeof teamsData.team2 === "string" ? teamsData.team2 : null) ??
       "";
 
-    if (!t1 || !t2) continue;
+    if (!t1Raw || !t2Raw) continue;
+    const t1 = resolveName(t1Raw);
+    const t2 = resolveName(t2Raw);
 
     if (!standings[t1]) standings[t1] = { played: 0, won: 0, drawn: 0, lost: 0, points: 0, pointsFor: 0, pointsAgainst: 0 };
     if (!standings[t2]) standings[t2] = { played: 0, won: 0, drawn: 0, lost: 0, points: 0, pointsFor: 0, pointsAgainst: 0 };
@@ -161,6 +176,18 @@ export function computeTournamentStandings(input: TournamentStandingsInput): Sta
   const matches = input.matches ?? [];
   const fixtures = input.fixtures ?? [];
 
+  const aliasToCanonical = new Map<string, string>();
+  for (const t of teams) {
+    const name = (t?.name as string) || "";
+    if (!name) continue;
+    aliasToCanonical.set(name, name);
+    const aliases = Array.isArray(t.aliases) ? t.aliases : [];
+    for (const a of aliases) {
+      if (typeof a === "string" && a) aliasToCanonical.set(a, name);
+    }
+  }
+  const resolveName = (raw: string): string => aliasToCanonical.get(raw) ?? raw;
+
   if (stages.length >= 2) {
     const lastStageNum = stages.length;
     const finalFixtures = fixtures.filter((f) => f.stage === lastStageNum);
@@ -174,8 +201,8 @@ export function computeTournamentStandings(input: TournamentStandingsInput): Sta
         const t1 = (f.team1Ref as any)?.name as string | undefined;
         const t2 = (f.team2Ref as any)?.name as string | undefined;
         if (t1 && t2) {
-          champion = m.winnerTeam === "A" ? t1 : t2;
-          runnerUp = m.winnerTeam === "A" ? t2 : t1;
+          champion = resolveName(m.winnerTeam === "A" ? t1 : t2);
+          runnerUp = resolveName(m.winnerTeam === "A" ? t2 : t1);
         }
         break;
       }
