@@ -6,7 +6,8 @@ import { initSocket } from "./lib/socket";
 import { canRunPersistentWorkers } from "./lib/runtime";
 import { startHoldCleanupSchedule } from "./workers/holdCleanupWorker";
 import { startOpenPlayDeadlineSchedule } from "./workers/openPlayDeadlineWorker";
-import "./workers/emailWorker";
+import { startEmailWorker } from "./workers/emailWorker";
+import { startRefundWorker } from "./workers/refundWorker";
 
 /**
  * Local / Docker entrypoint: HTTP listen + Socket.io + BullMQ schedulers.
@@ -14,6 +15,21 @@ import "./workers/emailWorker";
  */
 const app = createApp();
 const PORT = parseInt(process.env.PORT || "5000", 10);
+
+async function startWorkersSafely() {
+  try {
+    startEmailWorker();
+    startRefundWorker();
+    await startHoldCleanupSchedule();
+    await startOpenPlayDeadlineSchedule();
+  } catch (err: any) {
+    // Redis/BullMQ outage must not take down HTTP (tournaments, spectator, etc.)
+    console.error(
+      "[sportza-api] Workers failed to start (non-fatal):",
+      err?.message ?? err
+    );
+  }
+}
 
 async function startLocal() {
   if (!canRunPersistentWorkers) {
@@ -31,9 +47,7 @@ async function startLocal() {
     if (canRunPersistentWorkers) {
       initSocket(httpServer);
       console.log("Socket.io initialised");
-
-      await startHoldCleanupSchedule();
-      await startOpenPlayDeadlineSchedule();
+      await startWorkersSafely();
     } else {
       console.warn("Socket.io skipped (serverless runtime)");
     }

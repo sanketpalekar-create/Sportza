@@ -7,20 +7,31 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
  * On Vercel / serverless, use lazyConnect so cold starts do not open Redis
  * until the first command. Upstash Redis works with the standard redis:// URL.
  * BullMQ workers must NOT be started in serverless (see lib/runtime.ts).
+ *
+ * Connection errors are logged only — never rethrown — so a Redis outage
+ * (e.g. Upstash free-tier limit) cannot crash the HTTP process.
  */
 export const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
   lazyConnect: isServerless,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
+  retryStrategy: (times) => {
+    // Back off and keep trying; do not give up in a way that crashes Node
+    if (times > 30) return 10_000;
+    return Math.min(times * 100, 5000);
+  },
 });
 
 redis.on("error", (err) => {
-  console.error("Redis connection error:", err.message);
+  console.error("[redis] connection error (non-fatal):", err.message);
 });
 
 redis.on("connect", () => {
-  console.log("Redis connected");
+  console.log("[redis] connected");
+});
+
+redis.on("close", () => {
+  console.warn("[redis] connection closed");
 });
 
 export async function setOtp(key: string, code: string, ttlSeconds: number = 300): Promise<void> {

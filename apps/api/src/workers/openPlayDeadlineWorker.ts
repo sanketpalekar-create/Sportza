@@ -22,6 +22,10 @@ export async function startOpenPlayDeadlineSchedule() {
     console.error(`[openplay-deadline] Job ${job?.id} failed:`, err);
   });
 
+  deadlineWorker.on("error", (err) => {
+    console.error("[openplay-deadline] error (non-fatal):", err.message);
+  });
+
   await deadlineQueue.upsertJobScheduler(
     "openplay-deadline-repeat",
     { every: REPEAT_EVERY_MS },

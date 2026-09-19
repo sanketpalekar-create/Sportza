@@ -22,6 +22,10 @@ export async function startHoldCleanupSchedule() {
     console.error(`[hold-cleanup] Job ${job?.id} failed:`, err);
   });
 
+  holdCleanupWorker.on("error", (err) => {
+    console.error("[hold-cleanup] error (non-fatal):", err.message);
+  });
+
   await holdCleanupQueue.upsertJobScheduler(
     "hold-cleanup-repeat",
     { every: REPEAT_EVERY_MS },
