@@ -800,6 +800,29 @@ export default function TournamentSpectator() {
                 );
               })}
 
+            {/* Round Robin — single group fallback (no groupIndex on fixtures) */}
+            {isRoundRobin && !fixturesByGroup && stageFix.length > 0 && (() => {
+              const byRound: Record<number, any[]> = {};
+              for (const f of stageFix) {
+                const r = f.round ?? 1;
+                (byRound[r] ??= []).push(f);
+              }
+              return Object.entries(byRound)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([round, fixes]) => (
+                  <div key={round}>
+                    <p style={{ fontSize: "10px", fontWeight: "700", color: "#475569", letterSpacing: "0.1em", marginBottom: "6px" }}>
+                      ROUND {round}
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {fixes.map((f: any) => (
+                        <SpectatorFixtureCard key={f.id} fixture={f} isRoundRobin maxRound={maxRound} />
+                      ))}
+                    </div>
+                  </div>
+                ));
+            })()}
+
             {/* Knockout — grouped by round */}
             {!isRoundRobin && fixturesByRound && Object.entries(fixturesByRound)
               .sort(([a], [b]) => Number(a) - Number(b))

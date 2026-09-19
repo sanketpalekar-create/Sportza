@@ -22,6 +22,7 @@
     "db:seed:pickleball-ratings": "tsx prisma/seed-pickleball-ratings.ts",
     "db:seed:venue-images": "tsx prisma/seed-venue-images.ts",
     "db:backfill:padel": "tsx prisma/backfills/padel-reference-backfill.ts",
+    "db:push-missing": "tsx scripts/push-missing-to-railway.ts",
     "test": "vitest run"
   },
   "dependencies": {
