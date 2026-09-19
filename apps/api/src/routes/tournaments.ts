@@ -1269,9 +1269,24 @@ router.post(
         sport: finalScoreType,
         doubles,
       };
-      if (stageCfg?.targetScore != null) scoreConfig.targetScore = stageCfg.targetScore;
-      if (stageCfg?.bestOf != null) scoreConfig.bestOf = stageCfg.bestOf;
+      if (stageCfg?.targetScore != null) {
+        scoreConfig.targetScore = stageCfg.targetScore;
+        scoreConfig.pointsToWin = stageCfg.targetScore;
+      }
+      if (stageCfg?.bestOf != null) {
+        scoreConfig.bestOf = stageCfg.bestOf;
+        scoreConfig.games = stageCfg.bestOf;
+      }
       if (stageCfg?.scoringSystem != null) scoreConfig.scoringSystem = stageCfg.scoringSystem;
+      if (
+        finalScoreType === "pickleball_service"
+        || finalScoreType === "pickleball_rally"
+        || finalScoreType === "pickleball"
+      ) {
+        if (scoreConfig.winBy == null) scoreConfig.winBy = 2;
+        if (scoreConfig.games == null) scoreConfig.games = 3;
+        if (scoreConfig.pointsToWin == null) scoreConfig.pointsToWin = 11;
+      }
 
       // Create the Match record
       const match = await prisma.match.create({

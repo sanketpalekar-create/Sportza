@@ -47,6 +47,74 @@ export function getEngine(scoreType: string): ScoringEngine<any> {
   return ENGINES[key] ?? simpleEngine;
 }
 
+/** Tournament stages store bestOf/targetScore; engines expect games/pointsToWin. */
+function hydratePickleballEngineConfig(cfg: Record<string, unknown>): void {
+  const bestOf = Number(cfg.bestOf);
+  const target = Number(cfg.targetScore);
+  if (cfg.games == null && Number.isFinite(bestOf) && bestOf > 0) cfg.games = bestOf;
+  if (cfg.pointsToWin == null && Number.isFinite(target) && target > 0) cfg.pointsToWin = target;
+  if (cfg.winBy == null) cfg.winBy = 2;
+  if (cfg.games == null) cfg.games = 3;
+  if (cfg.pointsToWin == null) cfg.pointsToWin = 11;
+}
+
+function isAbScore(v: unknown): v is { A?: unknown; B?: unknown } {
+  return !!v && typeof v === "object";
+}
+
+function overlayAb(target: { A: number; B: number } | undefined, raw: unknown): void {
+  if (!target || !isAbScore(raw)) return;
+  if (raw.A != null) target.A = Number(raw.A) || 0;
+  if (raw.B != null) target.B = Number(raw.B) || 0;
+}
+
+/**
+ * Correct Score / repaired JSON often has gamesWon + completedGames but no config.
+ * Overlay those onto a fresh engine state instead of discarding them.
+ */
+function overlayStructuredScores(base: Record<string, unknown>, scores: Record<string, unknown>): void {
+  overlayAb(base.gamesWon as { A: number; B: number } | undefined, scores.gamesWon);
+  overlayAb(base.setsWon as { A: number; B: number } | undefined, scores.setsWon);
+  overlayAb(base.currentGame as { A: number; B: number } | undefined, scores.currentGame);
+  overlayAb(base.currentSet as { A: number; B: number } | undefined, scores.currentSet);
+
+  if (Array.isArray(scores.completedGames) && Array.isArray(base.completedGames)) {
+    base.completedGames = scores.completedGames;
+  }
+  if (Array.isArray(scores.completedSets) && Array.isArray(base.completedSets)) {
+    base.completedSets = scores.completedSets;
+  }
+
+  if (scores.winner === "A" || scores.winner === "B" || scores.winner === null) {
+    base.winner = scores.winner;
+  } else {
+    const gw = base.gamesWon as { A: number; B: number } | undefined;
+    const games = Number((base.config as { games?: unknown } | undefined)?.games);
+    const needed = Number.isFinite(games) && games > 0 ? Math.ceil(games / 2) : 0;
+    if (gw && needed > 0) {
+      if (gw.A >= needed) base.winner = "A";
+      else if (gw.B >= needed) base.winner = "B";
+    }
+  }
+
+  // If currentGame was never stored, keep the last completed game so displays
+  // don't fall back to 0–0 after a corrected Best of 1.
+  const currentGame = base.currentGame as { A: number; B: number } | undefined;
+  const completed = base.completedGames as Array<{ A?: number; B?: number }> | undefined;
+  if (
+    currentGame
+    && scores.currentGame == null
+    && Array.isArray(completed)
+    && completed.length > 0
+    && currentGame.A === 0
+    && currentGame.B === 0
+  ) {
+    const last = completed[completed.length - 1];
+    currentGame.A = Number(last?.A) || 0;
+    currentGame.B = Number(last?.B) || 0;
+  }
+}
+
 /**
  * Normalise any stored scores JSON into a valid engine state.
  * Old matches with flat `{ A: 0, B: 0 }` are migrated by running engine.init() to
@@ -65,6 +133,7 @@ export function normaliseState(rawScores: unknown, scoreType: string): unknown {
     const sport = (scores.config as { sport?: string }).sport;
     if (sport === "pickleball_service") {
       const pb = scores as Record<string, unknown>;
+      hydratePickleballEngineConfig(pb.config as Record<string, unknown>);
       if (!Array.isArray(pb.completedGames)) pb.completedGames = [];
       if (typeof pb.gamesWon !== "object" || !pb.gamesWon) pb.gamesWon = { A: 0, B: 0 };
       if (typeof pb.currentGame !== "object" || !pb.currentGame) pb.currentGame = { A: 0, B: 0 };
@@ -100,6 +169,7 @@ export function normaliseState(rawScores: unknown, scoreType: string): unknown {
     }
     if (sport === "pickleball_rally") {
       const pb = scores as Record<string, unknown>;
+      hydratePickleballEngineConfig(pb.config as Record<string, unknown>);
       if (!Array.isArray(pb.completedGames)) pb.completedGames = [];
       if (typeof pb.gamesWon !== "object" || !pb.gamesWon) pb.gamesWon = { A: 0, B: 0 };
       if (typeof pb.currentGame !== "object" || !pb.currentGame) pb.currentGame = { A: 0, B: 0 };
@@ -131,21 +201,34 @@ export function normaliseState(rawScores: unknown, scoreType: string): unknown {
     return scores;
   }
 
-  // Legacy flat scores like { A: 3, B: 1 } — build a complete engine state
-  // using init() so all required fields exist, then overlay the score values.
-  const base = engine.init(
-    scoreType === "pickleball_service" ? { sport: "pickleball_service" } : { sport: scoreType },
-  ) as any;
-  const aVal = Number(scores.A ?? scores.teamA ?? scores.team1 ?? 0);
-  const bVal = Number(scores.B ?? scores.teamB ?? scores.team2 ?? 0);
+  // Legacy / corrected scores — build a complete engine state using init() so
+  // all required fields exist, then overlay stored game totals instead of dropping them.
+  const initConfig: MatchConfig = scoreType === "pickleball_service"
+    ? { sport: "pickleball_service" }
+    : { sport: scoreType };
+  if (scoreType === "pickleball_service" || scoreType === "pickleball_rally" || scoreType === "pickleball") {
+    const gw = scores.gamesWon as { A?: number; B?: number } | undefined;
+    const maxWins = Math.max(Number(gw?.A) || 0, Number(gw?.B) || 0);
+    if (maxWins > 0) initConfig.games = Math.max(1, maxWins * 2 - 1);
+    hydratePickleballEngineConfig(initConfig);
+  }
+  const base = engine.init(initConfig) as Record<string, unknown>;
+  overlayStructuredScores(base, scores);
 
-  // Overlay scores into whichever field the engine uses for top-level totals
-  if (base.scores !== undefined) {
-    base.scores.A = aVal;
-    base.scores.B = bVal;
-  } else if (base.currentGame !== undefined) {
-    base.currentGame.A = aVal;
-    base.currentGame.B = bVal;
+  const hasStructured = scores.gamesWon != null || Array.isArray(scores.completedGames)
+    || scores.setsWon != null || Array.isArray(scores.completedSets);
+  if (!hasStructured) {
+    const aVal = Number(scores.A ?? scores.teamA ?? scores.team1 ?? 0);
+    const bVal = Number(scores.B ?? scores.teamB ?? scores.team2 ?? 0);
+    const flat = base.scores as { A: number; B: number } | undefined;
+    const current = base.currentGame as { A: number; B: number } | undefined;
+    if (flat) {
+      flat.A = aVal;
+      flat.B = bVal;
+    } else if (current) {
+      current.A = aVal;
+      current.B = bVal;
+    }
   }
   return base;
 }

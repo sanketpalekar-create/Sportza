@@ -222,9 +222,22 @@ export default function LiveMatch() {
     [engine, engineState, teamNames, teamKeys]
   );
   const displayForUi = useMemo(() => {
+    const pbFinal = (st: { winner?: unknown; completedGames?: Array<{ A: number; B: number }>; gamesWon?: { A: number; B: number } }) => {
+      const games = Array.isArray(st.completedGames) ? st.completedGames : [];
+      const gw = st.gamesWon ?? { A: 0, B: 0 };
+      return {
+        ...engineDisplay,
+        primary: `${gw.A} – ${gw.B}`,
+        secondary: games.map((g) => `${g.A}–${g.B}`).join("  ·  ") || undefined,
+        period: "Final",
+        isComplete: true,
+      };
+    };
+
     if (scoreType === "pickleball_service") {
       const st = engineState as PickleballServiceState;
-      if (st?.config?.sport !== "pickleball_service" || st.winner) return engineDisplay;
+      if (st?.config?.sport !== "pickleball_service") return engineDisplay;
+      if (st.winner || isDone) return pbFinal(st);
       const pA = teamPlayerNames[teamKeys[0]] ?? [];
       const pB = teamPlayerNames[teamKeys[1]] ?? [];
       return {
@@ -237,7 +250,9 @@ export default function LiveMatch() {
     }
     if (scoreType === "pickleball_rally") {
       const st = engineState as PickleballRallyState;
-      if (st?.config?.sport !== "pickleball_rally" || st.winner || !st.config.doubles || !st.setupComplete) {
+      if (st?.config?.sport !== "pickleball_rally") return engineDisplay;
+      if (st.winner || isDone) return pbFinal(st);
+      if (!st.config.doubles || !st.setupComplete) {
         return engineDisplay;
       }
       const pA = teamPlayerNames[teamKeys[0]] ?? [];
@@ -251,7 +266,7 @@ export default function LiveMatch() {
       };
     }
     return engineDisplay;
-  }, [scoreType, engineState, engineDisplay, teamNames, teamKeys, teamPlayerNames]);
+  }, [scoreType, engineState, engineDisplay, teamNames, teamKeys, teamPlayerNames, isDone]);
 
   const pbState = engineState as Partial<PickleballServiceState | PickleballRallyState>;
   const pbSetupGate =

@@ -2919,12 +2919,37 @@ function CorrectScoreModal({
 
   function handleSave() {
     setSaveError("");
+    const existing = (rawScores && typeof rawScores === "object" && !Array.isArray(rawScores))
+      ? { ...rawScores }
+      : {};
+    const completedGames = games.map(g => ({
+      A: g.a, B: g.b,
+      winner: g.a > g.b ? "A" : g.b > g.a ? "B" : "draw",
+    }));
+    const last = completedGames[completedGames.length - 1];
+    const scoreType = typeof fixture.match?.scoreType === "string" ? fixture.match.scoreType : null;
+    const existingConfig = (existing.config && typeof existing.config === "object")
+      ? { ...(existing.config as Record<string, unknown>) }
+      : null;
+    const neededGames = Math.max(1, (Math.max(gA, gB) * 2) - 1);
+    const config = existingConfig
+      ? {
+          ...existingConfig,
+          ...(existingConfig.games == null ? { games: neededGames } : {}),
+          ...(existingConfig.pointsToWin == null ? { pointsToWin: existingConfig.targetScore ?? 11 } : {}),
+          ...(existingConfig.winBy == null ? { winBy: 2 } : {}),
+        }
+      : scoreType
+        ? { sport: scoreType, games: neededGames, pointsToWin: 11, winBy: 2 }
+        : undefined;
     const scores = {
+      ...existing,
+      ...(config ? { config } : {}),
       gamesWon: { A: gA, B: gB },
-      completedGames: games.map(g => ({
-        A: g.a, B: g.b,
-        winner: g.a > g.b ? "A" : g.b > g.a ? "B" : "draw",
-      })),
+      completedGames,
+      currentGame: last ? { A: last.A, B: last.B } : { A: 0, B: 0 },
+      winner: winner ?? null,
+      setupComplete: true,
     };
     const winnerTeam = winner ?? undefined;
     updateMatchScore.mutate(

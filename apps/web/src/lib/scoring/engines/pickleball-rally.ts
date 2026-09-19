@@ -98,8 +98,8 @@ export const pickleballRallyEngine: ScoringEngine<PickleballRallyState> = {
     const cfg: PickleballRallyConfig = {
       ...(config as object),
       sport: "pickleball_rally",
-      games: Number((config as MatchConfig).games) || 3,
-      pointsToWin: Number((config as MatchConfig).pointsToWin) || 11,
+      games: Number((config as MatchConfig).games) || Number((config as MatchConfig).bestOf) || 3,
+      pointsToWin: Number((config as MatchConfig).pointsToWin) || Number((config as MatchConfig).targetScore) || 11,
       winBy: 2,
       doubles,
       firstServeTeam: fst,

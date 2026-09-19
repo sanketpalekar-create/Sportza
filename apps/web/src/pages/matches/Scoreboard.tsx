@@ -88,22 +88,29 @@ function enrichScoreboardDisplay(
   players: { team1: string[]; team2: string[] },
   isCompleted = false,
 ): ScoreDisplay {
-  if (scoreType !== "pickleball_service" || !rawScores) return display;
+  const isPbService = scoreType === "pickleball_service";
+  const isPbRally = scoreType === "pickleball_rally";
+  if ((!isPbService && !isPbRally) || !rawScores) return display;
   const st = normaliseState(rawScores, scoreType) as PickleballServiceState;
-  if (st?.config?.sport !== "pickleball_service") return display;
+  const sport = st?.config?.sport;
+  if (sport !== "pickleball_service" && sport !== "pickleball_rally") return display;
 
   // When the match is over (naturally or manually ended) show clean game scores,
   // never the serve-state triple.
   if (st.winner || isCompleted) {
-    const gameScores = st.completedGames.map((g) => `${g.A}–${g.B}`).join("  ·  ");
+    const games = Array.isArray(st.completedGames) ? st.completedGames : [];
+    const gameScores = games.map((g) => `${g.A}–${g.B}`).join("  ·  ");
+    const gw = st.gamesWon ?? { A: 0, B: 0 };
     return {
       ...display,
-      primary: `${st.gamesWon.A} – ${st.gamesWon.B}`,
+      primary: `${gw.A} – ${gw.B}`,
       secondary: gameScores || undefined,
       period: "Final",
       isComplete: true,
     };
   }
+
+  if (!isPbService) return display;
 
   return {
     ...display,

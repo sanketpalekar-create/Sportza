@@ -22,11 +22,11 @@ export interface PickleballState {
 export const pickleballEngine: ScoringEngine<PickleballState> = {
   init(config: MatchConfig): PickleballState {
     const cfg: PickleballConfig = {
-      games: 3,
-      pointsToWin: 11,
-      winBy: 2,
       ...config,
       sport: "pickleball",
+      games: Number(config.games) || Number(config.bestOf) || 3,
+      pointsToWin: Number(config.pointsToWin) || Number(config.targetScore) || 11,
+      winBy: 2,
     };
     return {
       config: cfg,
