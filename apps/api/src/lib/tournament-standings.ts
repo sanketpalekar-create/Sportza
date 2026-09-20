@@ -169,6 +169,40 @@ export type TournamentStandingsInput = {
   fixtures: Array<Record<string, any>>;
 };
 
+/**
+ * Prefer the Final among knockout fixtures: highest round, then prefer
+ * winner/team slots over loser (3rd-place) matches.
+ */
+export function pickFinalFixture(
+  fixtures: Array<Record<string, any>>
+): Record<string, any> | null {
+  const scored = fixtures.filter((f) => f.matchId != null);
+  if (scored.length === 0) return null;
+
+  const maxRound = Math.max(...scored.map((f) => Number(f.round) || 0));
+  const inFinalRound = scored.filter((f) => (Number(f.round) || 0) === maxRound);
+
+  const isThirdPlace = (f: Record<string, any>) =>
+    f.team1Type === "loser" || f.team2Type === "loser";
+
+  const finalists = inFinalRound.filter((f) => !isThirdPlace(f));
+  return (finalists[0] ?? inFinalRound[0]) ?? null;
+}
+
+/** Stage numbers whose format is round_robin / league (group table source). */
+function leagueStageNums(stages: Array<Record<string, any>>): Set<number> {
+  const nums = new Set<number>();
+  for (let i = 0; i < stages.length; i++) {
+    const fmt = stages[i]?.format as string | undefined;
+    if (fmt === "round_robin" || fmt === "league" || fmt === "group_knockout") {
+      nums.add(i + 1); // stageOrder is 1-based; fixtures.stage matches index+1
+    }
+  }
+  // Fallback: if no league-format stage found, use stage 1
+  if (nums.size === 0 && stages.length > 0) nums.add(1);
+  return nums;
+}
+
 /** Standings with multi-stage champion/runner-up pinning (same logic as GET /standings). */
 export function computeTournamentStandings(input: TournamentStandingsInput): StandingRow[] {
   const teams = input.teams ?? [];
@@ -190,27 +224,37 @@ export function computeTournamentStandings(input: TournamentStandingsInput): Sta
 
   if (stages.length >= 2) {
     const lastStageNum = stages.length;
-    const finalFixtures = fixtures.filter((f) => f.stage === lastStageNum);
+    const knockoutFixtures = fixtures.filter((f) => f.stage === lastStageNum);
+    const finalFixture = pickFinalFixture(knockoutFixtures);
+
     let champion: string | null = null;
     let runnerUp: string | null = null;
 
-    for (const f of finalFixtures) {
-      if (!f.matchId) continue;
-      const m = matches.find((match) => match.id === f.matchId);
+    if (finalFixture?.matchId) {
+      const m = matches.find((match) => match.id === finalFixture.matchId);
       if (m?.winnerTeam) {
-        const t1 = (f.team1Ref as any)?.name as string | undefined;
-        const t2 = (f.team2Ref as any)?.name as string | undefined;
+        const t1 = (finalFixture.team1Ref as any)?.name as string | undefined;
+        const t2 = (finalFixture.team2Ref as any)?.name as string | undefined;
         if (t1 && t2) {
           champion = resolveName(m.winnerTeam === "A" ? t1 : t2);
           runnerUp = resolveName(m.winnerTeam === "A" ? t2 : t1);
         }
-        break;
       }
     }
 
+    // League / group table: only matches from round-robin stages (exclude KO)
+    const leagueStages = leagueStageNums(stages);
+    const leagueMatchIds = new Set(
+      fixtures
+        .filter((f) => leagueStages.has(f.stage as number) && f.matchId != null)
+        .map((f) => f.matchId as number)
+    );
+    const groupMatches =
+      leagueMatchIds.size > 0
+        ? matches.filter((m) => leagueMatchIds.has(m.id))
+        : matches.filter((m) => !knockoutFixtures.some((f) => f.matchId === m.id));
+
     if (champion && runnerUp) {
-      const finalMatchIds = new Set(finalFixtures.map((f) => f.matchId).filter(Boolean));
-      const groupMatches = matches.filter((m) => !finalMatchIds.has(m.id));
       const groupStandings = computeStandings(groupMatches, teams);
       const rest = groupStandings.filter((s) => s.team !== champion && s.team !== runnerUp);
 
@@ -234,6 +278,11 @@ export function computeTournamentStandings(input: TournamentStandingsInput): Sta
       const runnerRow = groupStandings.find((s) => s.team === runnerUp);
 
       return [makeRow(champRow, champion, "champion"), makeRow(runnerRow, runnerUp, "runner_up"), ...rest];
+    }
+
+    // Knockout incomplete: still show league-only table when we can scope it
+    if (leagueMatchIds.size > 0) {
+      return computeStandings(groupMatches, teams);
     }
   }
 

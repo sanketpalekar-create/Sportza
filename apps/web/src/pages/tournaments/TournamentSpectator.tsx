@@ -60,6 +60,28 @@ function gameScores(scores: any): string | null {
   return games.map((g: any) => `${g.A}-${g.B}`).join(", ");
 }
 
+function completedGameCount(scores: any): number {
+  const games = scores?.completedGames ?? scores?.completedSets ?? null;
+  return Array.isArray(games) ? games.length : 0;
+}
+
+/** Prefer server winnerTeam; fall back to score comparison. Copied from TournamentDetail. */
+function deriveWinner(
+  matchWinnerTeam: string | null | undefined,
+  scoreA: string | null,
+  scoreB: string | null,
+  isDone: boolean,
+): { t1Wins: boolean; t2Wins: boolean } {
+  if (!isDone) return { t1Wins: false, t2Wins: false };
+  if (matchWinnerTeam === "A") return { t1Wins: true,  t2Wins: false };
+  if (matchWinnerTeam === "B") return { t1Wins: false, t2Wins: true  };
+  if (scoreA !== null && scoreB !== null) {
+    const a = parseInt(scoreA, 10), b = parseInt(scoreB, 10);
+    return { t1Wins: a > b, t2Wins: b > a };
+  }
+  return { t1Wins: false, t2Wins: false };
+}
+
 function fmtDate(d: string | null) {
   if (!d) return null;
   try { return format(new Date(d), "dd MMM yyyy"); } catch { return null; }
@@ -82,9 +104,34 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
   const isFinal    = !isRoundRobin && (fixture.round ?? 1) === maxRound;
   const matchId: number | null = fixture.match?.id ?? fixture.matchId ?? null;
   const gameStr = gameScores(fixture.match?.scores);
+  const gameCount = completedGameCount(fixture.match?.scores);
+  const isSingleGame = gameCount === 1;
   const scoreboardHref = matchId && (isLive || isDone) ? `/scoreboard/${matchId}` : null;
+  const { t1Wins, t2Wins } = deriveWinner(
+    fixture.match?.winnerTeam,
+    score?.a ?? null,
+    score?.b ?? null,
+    isDone,
+  );
+
+  // Best of 1: lead with point score (11-6). Multi-game: lead with games won (2 : 1).
+  const headline = isSingleGame && gameStr
+    ? gameStr
+    : score
+      ? `${score.a} : ${score.b}`
+      : null;
+  const subline = isSingleGame ? null : gameStr;
 
   if (isBye) return null;
+
+  const t1Color = isDone
+    ? (t1Wins ? "#E2E8F0" : t2Wins ? "#64748B" : "#F1F5F9")
+    : isLive ? "#F1F5F9" : "#94A3B8";
+  const t2Color = isDone
+    ? (t2Wins ? "#E2E8F0" : t1Wins ? "#64748B" : "#F1F5F9")
+    : isLive ? "#F1F5F9" : "#94A3B8";
+  const t1Weight = isDone ? (t1Wins ? "700" : "600") : isLive ? "700" : "600";
+  const t2Weight = isDone ? (t2Wins ? "700" : "600") : isLive ? "700" : "600";
 
   return (
     <div
@@ -110,8 +157,8 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
         {/* Team 1 */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{
-            fontSize: "13px", fontWeight: isDone || isLive ? "700" : "600",
-            color: isDone || isLive ? "#F1F5F9" : "#94A3B8",
+            fontSize: "13px", fontWeight: t1Weight,
+            color: t1Color,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>
             {t1Name}
@@ -120,9 +167,9 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
 
         {/* Score / status */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: "80px" }}>
-          {score ? (
-            <p style={{ fontSize: "18px", fontWeight: "800", color: isLive ? "#22C55E" : "#3B82F6", letterSpacing: "2px" }}>
-              {score.a} : {score.b}
+          {headline ? (
+            <p style={{ fontSize: isSingleGame ? "16px" : "18px", fontWeight: "800", color: isLive ? "#22C55E" : "#3B82F6", letterSpacing: isSingleGame ? "0.5px" : "2px" }}>
+              {headline}
             </p>
           ) : (
             <p style={{ fontSize: "11px", color: "#475569", fontWeight: "600" }}>
@@ -131,9 +178,9 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
               <span style={{ fontSize: "9px" }}>PENDING</span>
             </p>
           )}
-          {gameStr && (
+          {subline && (
             <p style={{ fontSize: "10px", color: "#64748B", marginTop: "2px", letterSpacing: "0.3px", textAlign: "center" }}>
-              {gameStr}
+              {subline}
             </p>
           )}
           {isLive && !scoreboardHref && (
@@ -163,8 +210,8 @@ function SpectatorFixtureCard({ fixture, isRoundRobin, maxRound }: {
         {/* Team 2 */}
         <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
           <p style={{
-            fontSize: "13px", fontWeight: isDone || isLive ? "700" : "600",
-            color: isDone || isLive ? "#F1F5F9" : "#94A3B8",
+            fontSize: "13px", fontWeight: t2Weight,
+            color: t2Color,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>
             {t2Name}
@@ -238,8 +285,8 @@ function InfoChip({ label, color = "#64748B", bg = "rgba(100,116,139,0.12)" }: {
   );
 }
 
-function TournamentInfoCard({ tournament, stages, isMultiStage }: {
-  tournament: any; stages: any[]; isMultiStage: boolean;
+function TournamentInfoCard({ tournament, stages, isMultiStage, activeStageNum }: {
+  tournament: any; stages: any[]; isMultiStage: boolean; activeStageNum?: number;
 }) {
   const hasContent =
     stages.length > 0 ||
@@ -248,10 +295,13 @@ function TournamentInfoCard({ tournament, stages, isMultiStage }: {
 
   if (!hasContent) return null;
 
-  // Build display stages: multi-stage uses the stages array;
-  // single-format uses stages[0] (singleFormat flag) or top-level format.
+  // Multi-stage: chips for the stage currently being viewed only.
+  // Single-format: stages[0] or top-level format.
+  const activeStages = isMultiStage
+    ? stages.filter((s: any) => s.stageOrder === activeStageNum)
+    : [];
   const displayStages: any[] = isMultiStage
-    ? stages
+    ? (activeStages.length > 0 ? activeStages : stages)
     : stages.length > 0
       ? stages
       : [{ name: formatLabel(tournament.format ?? ""), format: tournament.format }];
@@ -686,7 +736,7 @@ export default function TournamentSpectator() {
         </div>
 
         {/* Tournament Info Card */}
-        <TournamentInfoCard tournament={tournament} stages={stages} isMultiStage={isMultiStage} />
+        <TournamentInfoCard tournament={tournament} stages={stages} isMultiStage={isMultiStage} activeStageNum={activeStageNum} />
 
         {/* Sponsors */}
         {Array.isArray(tournament.sponsors) && tournament.sponsors.length > 0 && (

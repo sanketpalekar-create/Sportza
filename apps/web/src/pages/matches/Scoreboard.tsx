@@ -96,15 +96,18 @@ function enrichScoreboardDisplay(
   if (sport !== "pickleball_service" && sport !== "pickleball_rally") return display;
 
   // When the match is over (naturally or manually ended) show clean game scores,
-  // never the serve-state triple.
+  // never the serve-state triple. Point scores (11–6) lead; games-won (1–0) is
+  // only a subline for multi-game matches (not Best of 1).
   if (st.winner || isCompleted) {
     const games = Array.isArray(st.completedGames) ? st.completedGames : [];
     const gameScores = games.map((g) => `${g.A}–${g.B}`).join("  ·  ");
     const gw = st.gamesWon ?? { A: 0, B: 0 };
+    const cfgGames = Number(st.config?.games) || Number((st.config as { bestOf?: number })?.bestOf) || 0;
+    const isMultiGame = cfgGames > 1 || games.length > 1;
     return {
       ...display,
-      primary: `${gw.A} – ${gw.B}`,
-      secondary: gameScores || undefined,
+      primary: gameScores || `${gw.A} – ${gw.B}`,
+      secondary: isMultiGame ? `${gw.A} – ${gw.B}` : undefined,
       period: "Final",
       isComplete: true,
     };
@@ -332,6 +335,12 @@ export default function Scoreboard() {
     ? teamLabel(match.winnerTeam) === teamNames.team1
     : null;
 
+  const opponentName = winnerIsTeam1 === true
+    ? teamNames.team2
+    : winnerIsTeam1 === false
+      ? teamNames.team1
+      : null;
+
   // Panel font size — shrink for longer labels (e.g. "ADV", "Deuce")
   const panelFontSize = (v: string) =>
     v.length > 3 ? "clamp(3rem, 10vw, 12rem)" : "clamp(5rem, 18vw, 20rem)";
@@ -366,14 +375,18 @@ export default function Scoreboard() {
                   {winnerPlayerNames.join("  ·  ")}
                 </p>
               )}
-              {/* Show games/sets (secondary) as the headline score when available —
-                  for manually-ended matches the engine primary shows the in-progress
-                  game score which is less meaningful than the games-won tally */}
+              {opponentName && (
+                <>
+                  <p style={styles.winnerAgainstLabel}>WON AGAINST</p>
+                  <p style={styles.winnerAgainstName}>{opponentName}</p>
+                </>
+              )}
+              {/* Point scores lead (primary); games-won subline only for multi-game */}
               <p style={styles.winnerFinalScore}>
-                {engineDisplay.secondary ?? engineDisplay.primary}
+                {engineDisplay.primary}
               </p>
               {engineDisplay.secondary && (
-                <p style={styles.winnerSecondary}>{engineDisplay.primary}</p>
+                <p style={styles.winnerSecondary}>{engineDisplay.secondary}</p>
               )}
             </>
           ) : (
@@ -381,8 +394,11 @@ export default function Scoreboard() {
               <span style={styles.winnerTrophy}>🤝</span>
               <p style={styles.winnerSuperLabel}>MATCH DRAWN</p>
               <p style={styles.winnerFinalScore}>
-                {engineDisplay.secondary ?? engineDisplay.primary}
+                {engineDisplay.primary}
               </p>
+              {engineDisplay.secondary && (
+                <p style={styles.winnerSecondary}>{engineDisplay.secondary}</p>
+              )}
             </>
           )}
         </div>
@@ -658,8 +674,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     gap: "clamp(0.4rem, 1.8vh, 1.4rem)",
-    background: "rgba(9,15,29,0.88)",
-    backdropFilter: "blur(6px)",
+    background: "#0a0f1a",
     zIndex: 30,
   },
   winnerGlow: {
@@ -709,6 +724,25 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: "#CBD5E1",
     letterSpacing: "0.04em",
+    zIndex: 1,
+    margin: "0 0 8px 0",
+    textAlign: "center" as const,
+  },
+  winnerAgainstLabel: {
+    fontSize: "clamp(0.65rem, 1.6vw, 1.1rem)",
+    fontWeight: 700,
+    color: "#64748B",
+    letterSpacing: "0.22em",
+    textTransform: "uppercase" as const,
+    zIndex: 1,
+    margin: "4px 0 0 0",
+  },
+  winnerAgainstName: {
+    fontSize: "clamp(0.9rem, 2.4vw, 2rem)",
+    fontWeight: 600,
+    color: "#CBD5E1",
+    letterSpacing: "0.04em",
+    textTransform: "uppercase" as const,
     zIndex: 1,
     margin: "0 0 8px 0",
     textAlign: "center" as const,

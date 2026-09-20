@@ -22,6 +22,7 @@ import {
   PICKLETHON_KNOCKOUT_BRACKET,
   PICKLETHON_STAGES,
 } from "./data/picklethon-pools";
+import { seedDinkDangal } from "./seed-dink-dangal";
 
 const prisma = new PrismaClient();
 
@@ -2270,6 +2271,16 @@ async function main() {
         `  ✓ Picklethon August — ${teamsJson.length} teams, 4 groups, ${PICKLETHON_GROUP_SCHEDULE.length} group fixtures, ${PICKLETHON_KNOCKOUT_BRACKET.length} knockout fixtures`
       );
     }
+  }
+
+  // --- Tournament 7: Dink Dangal (completed historical archive) ---
+  {
+    await seedDinkDangal(prisma, {
+      createIfMissingOnly: true,
+      venueId: venuePickleball.id,
+      createdById: arjun.id,
+      passwordHash: DEV_PASSWORD_HASH,
+    });
   }
 
   console.log("  ✓ Tournaments + fixtures");
