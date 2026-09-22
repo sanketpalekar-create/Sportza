@@ -780,6 +780,21 @@ export default function TournamentDetail() {
             )}
           </div>
 
+          {/* Organizer — always visible to players/spectators */}
+          {tournament.createdBy?.name && (
+            <div
+              className="flex items-center gap-1.5 mb-3 pt-3"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <span style={{ fontSize: "10px", color: "#475569", fontWeight: "600" }}>
+                Organised by
+              </span>
+              <span style={{ fontSize: "12px", color: "#F1F5F9", fontWeight: "700" }}>
+                {tournament.createdBy.name}
+              </span>
+            </div>
+          )}
+
           {/* Edit Tournament — manager only, while tournament is not yet finished */}
           {isManager && status !== "completed" && status !== "cancelled" && (
             <button

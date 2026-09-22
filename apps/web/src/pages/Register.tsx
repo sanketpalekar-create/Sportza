@@ -30,7 +30,7 @@ function OtpBoxes({
 }: {
   value: string;
   onChange: (v: string) => void;
-  onComplete: () => void;
+  onComplete: (code: string) => void;
   error?: string;
 }) {
   const refs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
@@ -56,15 +56,15 @@ function OtpBoxes({
     const next = (value.slice(0, i) + digit + value.slice(i + 1)).slice(0, 6);
     onChange(next);
     if (i < 5) refs[i + 1].current?.focus();
-    else if (next.length === 6) onComplete();
+    else if (next.length === 6) onComplete(next);
   }
 
   function handlePaste(e: React.ClipboardEvent) {
     const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (digits.length > 0) {
-      onChange(digits.padEnd(6, "").slice(0, 6));
+      onChange(digits);
       refs[Math.min(digits.length, 5)].current?.focus();
-      if (digits.length === 6) onComplete();
+      if (digits.length === 6) onComplete(digits);
     }
     e.preventDefault();
   }
@@ -210,13 +210,14 @@ export default function Register() {
     }
   }
 
-  async function handleVerify() {
-    if (otpVal.length < 6) { setOtpErr("Enter the 6-digit code"); return; }
+  async function handleVerify(code?: string) {
+    const otp = code ?? otpVal;
+    if (otp.length < 6 || isVerifying) return;
     setOtpErr("");
     try {
       let result: any;
-      if (method === "phone") result = await verifyPhone.mutateAsync({ phone: identifier, code: otpVal, name: storedName });
-      else result = await verifyOtp.mutateAsync({ email: identifier, code: otpVal, name: storedName });
+      if (method === "phone") result = await verifyPhone.mutateAsync({ phone: identifier, code: otp, name: storedName });
+      else result = await verifyOtp.mutateAsync({ email: identifier, code: otp, name: storedName });
       handleSuccess(result);
     } catch (err: any) {
       setOtpErr(err?.response?.data?.message ?? "Invalid or expired code");
@@ -369,14 +370,14 @@ export default function Register() {
           <div className="mb-6">
             <OtpBoxes
               value={otpVal}
-              onChange={setOtpVal}
+              onChange={(v) => { setOtpVal(v); setOtpErr(""); }}
               onComplete={handleVerify}
               error={otpErr}
             />
           </div>
 
           <button
-            onClick={handleVerify}
+            onClick={() => handleVerify()}
             disabled={isVerifying || otpVal.length < 6}
             className="w-full flex items-center justify-center gap-2 text-white"
             style={{
