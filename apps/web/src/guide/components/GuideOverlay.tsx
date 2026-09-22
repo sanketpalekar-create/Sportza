@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { GuideDef } from "../types";
 import GuideStepCard from "./GuideStep";
 
@@ -6,9 +7,11 @@ interface GuideOverlayProps {
   guide: GuideDef;
   stepIndex: number;
   reducedMotion: boolean;
+  open: boolean;
   onNext: () => void;
   onBack: () => void;
   onSkip: () => void;
+  onExited?: () => void;
 }
 
 interface SpotlightRect {
@@ -19,40 +22,91 @@ interface SpotlightRect {
 }
 
 const PAD = 8;
+const EXIT_MS = 220;
+const TARGET_RETRY_MS = 500;
+const TARGET_RETRY_INTERVAL = 80;
 
 export default function GuideOverlay({
   guide,
   stepIndex,
   reducedMotion,
+  open,
   onNext,
   onBack,
   onSkip,
+  onExited,
 }: GuideOverlayProps) {
   const step = guide.steps[stepIndex];
   const [rect, setRect] = useState<SpotlightRect | null>(null);
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : true
   );
-  const skipAttempts = useRef(0);
+  const [visible, setVisible] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const retryTimerRef = useRef<number | null>(null);
+  const retryStartedRef = useRef(0);
+  const exitTimerRef = useRef<number | null>(null);
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
+
+  // Enter / exit animation
+  useEffect(() => {
+    if (exitTimerRef.current) {
+      window.clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+    if (open) {
+      // Double-rAF so the browser paints the initial hidden state first
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
+      return () => cancelAnimationFrame(id);
+    }
+    setVisible(false);
+    const ms = reducedMotion ? 0 : EXIT_MS;
+    exitTimerRef.current = window.setTimeout(() => {
+      onExited?.();
+    }, ms);
+    return () => {
+      if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current);
+    };
+  }, [open, onExited, reducedMotion]);
+
+  const clearRetry = useCallback(() => {
+    if (retryTimerRef.current) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, []);
 
   const measure = useCallback(() => {
     if (!step) return;
     const el = document.querySelector(step.target) as HTMLElement | null;
     if (!el) {
-      skipAttempts.current += 1;
+      if (!retryStartedRef.current) {
+        retryStartedRef.current = Date.now();
+      }
+      const elapsed = Date.now() - retryStartedRef.current;
+      if (elapsed < TARGET_RETRY_MS) {
+        clearRetry();
+        retryTimerRef.current = window.setTimeout(measure, TARGET_RETRY_INTERVAL);
+        // Keep a centered zero-size hole so the dim backdrop stays consistent
+        setRect(null);
+        return;
+      }
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
-        console.warn(`[guide] target not found: ${step.target}`);
+        console.warn(`[guide] target not found after retry: ${step.target}`);
       }
-      if (step.optional || skipAttempts.current >= 2) {
-        skipAttempts.current = 0;
-        onNext();
+      retryStartedRef.current = 0;
+      if (step.optional) {
+        onNextRef.current();
       }
       setRect(null);
       return;
     }
-    skipAttempts.current = 0;
+    retryStartedRef.current = 0;
+    clearRetry();
     const r = el.getBoundingClientRect();
     setRect({
       top: r.top - PAD,
@@ -69,11 +123,14 @@ export default function GuideOverlay({
     } catch {
       // ignore
     }
-  }, [onNext, reducedMotion, step]);
+  }, [clearRetry, reducedMotion, step]);
 
   useLayoutEffect(() => {
+    retryStartedRef.current = 0;
+    clearRetry();
     measure();
-  }, [measure, stepIndex]);
+    return clearRetry;
+  }, [measure, stepIndex, clearRetry]);
 
   useEffect(() => {
     const onResize = () => {
@@ -89,6 +146,7 @@ export default function GuideOverlay({
   }, [measure]);
 
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -102,25 +160,73 @@ export default function GuideOverlay({
       }
     };
     window.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    // Don't lock scroll entirely so target can scroll into view; trap focus in panel
     panelRef.current?.focus();
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
     };
-  }, [onBack, onNext, onSkip, stepIndex]);
+  }, [onBack, onNext, onSkip, stepIndex, open]);
 
   if (!step) return null;
 
+  const vw = typeof window !== "undefined" ? window.innerWidth : 375;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 667;
+
+  // Unified spotlight: when no target, use a zero-size hole at center (full dim, no DOM swap)
   const hole = rect
     ? {
         top: Math.max(0, rect.top),
         left: Math.max(0, rect.left),
-        width: Math.min(rect.width, window.innerWidth),
-        height: Math.min(rect.height, window.innerHeight),
+        width: Math.min(rect.width, vw),
+        height: Math.min(rect.height, vh),
       }
-    : null;
+    : {
+        top: vh / 2,
+        left: vw / 2,
+        width: 0,
+        height: 0,
+      };
+
+  const transitionMs = reducedMotion ? 0 : EXIT_MS;
+  const posTransition = reducedMotion
+    ? undefined
+    : `top ${EXIT_MS}ms cubic-bezier(0.22,1,0.36,1), left ${EXIT_MS}ms cubic-bezier(0.22,1,0.36,1), width ${EXIT_MS}ms cubic-bezier(0.22,1,0.36,1), height ${EXIT_MS}ms cubic-bezier(0.22,1,0.36,1), box-shadow ${EXIT_MS}ms ease, opacity ${EXIT_MS}ms ease`;
+
+  const spotlightStyle: CSSProperties = {
+    top: hole.top,
+    left: hole.left,
+    width: hole.width,
+    height: hole.height,
+    borderRadius: hole.width === 0 ? 0 : 12,
+    boxShadow:
+      "0 0 0 9999px rgba(2, 6, 23, 0.72), 0 0 0 2px rgba(59,130,246,0.9), 0 0 24px 4px rgba(59,130,246,0.35)",
+    transition: posTransition,
+    zIndex: 201,
+    opacity: visible ? 1 : 0,
+  };
+
+  const panelBase: CSSProperties = isMobile
+    ? { left: 0, right: 0, bottom: 0 }
+    : positionDesktop(hole, step.placement ?? "bottom");
+
+  const panelStyle: CSSProperties = {
+    ...panelBase,
+    opacity: visible ? 1 : 0,
+    transform: [
+      (panelBase.transform as string) || "",
+      visible
+        ? isMobile
+          ? "translateY(0)"
+          : "scale(1)"
+        : isMobile
+          ? "translateY(12px)"
+          : "scale(0.96)",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    transition: reducedMotion
+      ? undefined
+      : `opacity ${transitionMs}ms ease, transform ${transitionMs}ms cubic-bezier(0.22,1,0.36,1), top ${EXIT_MS}ms cubic-bezier(0.22,1,0.36,1), left ${EXIT_MS}ms cubic-bezier(0.22,1,0.36,1)`,
+  };
 
   return (
     <div
@@ -128,44 +234,19 @@ export default function GuideOverlay({
       role="dialog"
       aria-modal="true"
       aria-label={`${guide.title}: ${step.title}`}
+      style={{ pointerEvents: open ? "auto" : "none" }}
     >
-      {/* Spotlight overlay via box-shadow hole */}
-      {hole ? (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed rounded-xl"
-          style={{
-            top: hole.top,
-            left: hole.left,
-            width: hole.width,
-            height: hole.height,
-            boxShadow: "0 0 0 9999px rgba(2, 6, 23, 0.72)",
-            transition: reducedMotion ? undefined : "top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease",
-            outline: "2px solid rgba(59,130,246,0.85)",
-            outlineOffset: 2,
-            zIndex: 201,
-          }}
-        />
-      ) : (
-        <div className="fixed inset-0 bg-slate-950/70" aria-hidden style={{ zIndex: 201 }} />
-      )}
+      <div aria-hidden className="pointer-events-none fixed rounded-xl" style={spotlightStyle} />
 
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        className="fixed z-[202] outline-none"
-        style={
-          isMobile
-            ? { left: 0, right: 0, bottom: 0 }
-            : positionDesktop(hole, step.placement ?? "bottom")
-        }
-      >
+      <div ref={panelRef} tabIndex={-1} className="fixed z-[202] outline-none" style={panelStyle}>
         <GuideStepCard
           title={step.title}
           description={step.description}
           stepIndex={stepIndex}
           totalSteps={guide.steps.length}
+          stepId={step.id}
           isMobile={isMobile}
+          reducedMotion={reducedMotion}
           onBack={stepIndex > 0 ? onBack : undefined}
           onNext={onNext}
           onSkip={onSkip}
@@ -177,16 +258,19 @@ export default function GuideOverlay({
 }
 
 function positionDesktop(
-  hole: SpotlightRect | null,
+  hole: SpotlightRect,
   placement: string
-): React.CSSProperties {
-  if (!hole) {
-    return { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: 340 };
-  }
+): CSSProperties {
   const width = 340;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 768;
+
+  if (hole.width === 0 && hole.height === 0) {
+    return { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width };
+  }
   if (placement === "top") {
     return {
-      left: Math.min(Math.max(12, hole.left), window.innerWidth - width - 12),
+      left: Math.min(Math.max(12, hole.left), vw - width - 12),
       top: Math.max(12, hole.top - 12),
       transform: "translateY(-100%)",
       width,
@@ -202,15 +286,15 @@ function positionDesktop(
   }
   if (placement === "right") {
     return {
-      left: Math.min(window.innerWidth - width - 12, hole.left + hole.width + 12),
+      left: Math.min(vw - width - 12, hole.left + hole.width + 12),
       top: hole.top,
       width,
     };
   }
   // bottom / default
   return {
-    left: Math.min(Math.max(12, hole.left), window.innerWidth - width - 12),
-    top: Math.min(window.innerHeight - 12, hole.top + hole.height + 12),
+    left: Math.min(Math.max(12, hole.left), vw - width - 12),
+    top: Math.min(vh - 12, hole.top + hole.height + 12),
     width,
   };
 }

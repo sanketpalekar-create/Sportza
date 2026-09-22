@@ -1,10 +1,14 @@
+import { useEffect, useState } from "react";
+
 interface GuideStepCardProps {
   title: string;
   description: string;
   stepIndex: number;
   totalSteps: number;
+  stepId: string;
   isMobile: boolean;
   isLast: boolean;
+  reducedMotion?: boolean;
   onBack?: () => void;
   onNext: () => void;
   onSkip: () => void;
@@ -15,12 +19,38 @@ export default function GuideStepCard({
   description,
   stepIndex,
   totalSteps,
+  stepId,
   isMobile,
   isLast,
+  reducedMotion = false,
   onBack,
   onNext,
   onSkip,
 }: GuideStepCardProps) {
+  const [contentVisible, setContentVisible] = useState(true);
+  const [displayTitle, setDisplayTitle] = useState(title);
+  const [displayDescription, setDisplayDescription] = useState(description);
+  const [displayIndex, setDisplayIndex] = useState(stepIndex);
+
+  // Crossfade content when the step changes
+  useEffect(() => {
+    if (reducedMotion) {
+      setDisplayTitle(title);
+      setDisplayDescription(description);
+      setDisplayIndex(stepIndex);
+      setContentVisible(true);
+      return;
+    }
+    setContentVisible(false);
+    const t = window.setTimeout(() => {
+      setDisplayTitle(title);
+      setDisplayDescription(description);
+      setDisplayIndex(stepIndex);
+      setContentVisible(true);
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [stepId, title, description, stepIndex, reducedMotion]);
+
   return (
     <div
       className={isMobile ? "rounded-t-2xl px-5 pb-6 pt-4" : "rounded-2xl px-5 py-4 shadow-xl"}
@@ -37,15 +67,43 @@ export default function GuideStepCard({
           aria-hidden
         />
       )}
-      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#60A5FA" }}>
-        Step {stepIndex + 1} of {totalSteps}
-      </p>
-      <h2 className="mt-1 text-lg font-bold" style={{ color: "#F8FAFC" }}>
-        {title}
-      </h2>
-      <p className="mt-2 text-sm leading-relaxed" style={{ color: "#94A3B8" }}>
-        {description}
-      </p>
+
+      <div
+        style={{
+          opacity: contentVisible ? 1 : 0,
+          transform: contentVisible ? "translateY(0)" : "translateY(4px)",
+          transition: reducedMotion
+            ? undefined
+            : "opacity 0.15s ease, transform 0.15s ease",
+        }}
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#60A5FA" }}>
+          Step {displayIndex + 1} of {totalSteps}
+        </p>
+
+        {/* Progress dots */}
+        <div className="mt-2 flex items-center gap-1.5" aria-hidden>
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <span
+              key={i}
+              className="h-1.5 rounded-full"
+              style={{
+                width: i === displayIndex ? 16 : 6,
+                backgroundColor: i === displayIndex ? "#3B82F6" : "#334155",
+                transition: reducedMotion ? undefined : "width 0.2s ease, background-color 0.2s ease",
+              }}
+            />
+          ))}
+        </div>
+
+        <h2 className="mt-2.5 text-lg font-bold" style={{ color: "#F8FAFC" }}>
+          {displayTitle}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed" style={{ color: "#94A3B8" }}>
+          {displayDescription}
+        </p>
+      </div>
+
       <div className="mt-5 flex items-center justify-between gap-3">
         <button
           type="button"

@@ -96,6 +96,7 @@ export default function BottomNav() {
             key={to}
             to={to}
             end={to === "/"}
+            data-guide={to === "/profile" ? "nav-profile" : undefined}
             className={({ isActive }) =>
               `flex flex-col items-center gap-0.5 px-3 py-1 transition-colors ${
                 isActive ? "" : ""

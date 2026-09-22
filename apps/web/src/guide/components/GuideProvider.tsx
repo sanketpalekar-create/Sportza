@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -29,7 +30,7 @@ import {
   setWelcomeSeen,
   upsertLocalProgress,
 } from "../lib/storage";
-import type { ActiveGuideState, GuideProgressRecord } from "../types";
+import type { ActiveGuideState, GuideDef, GuideProgressRecord } from "../types";
 import GuideOverlay from "./GuideOverlay";
 import GuideWelcomeModal from "./GuideWelcomeModal";
 
@@ -57,16 +58,23 @@ function hasAuthToken(): boolean {
   );
 }
 
+interface RenderedGuide {
+  def: GuideDef;
+  stepIndex: number;
+}
+
 export function GuideProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { activeRole } = useRole();
   const [active, setActive] = useState<ActiveGuideState | null>(null);
+  const [renderedGuide, setRenderedGuide] = useState<RenderedGuide | null>(null);
   const [localProgress, setLocalProgress] = useState<GuideProgressRecord[]>(() =>
     loadLocalGuideProgress()
   );
   const [showWelcome, setShowWelcome] = useState(false);
   const [reducedMotion] = useState(() => prefersReducedMotion());
   const firstVisitFired = useRef<Set<string>>(new Set());
+  const welcomeHandoffRef = useRef<number | null>(null);
   const authenticated = hasAuthToken();
 
   const { data: progressRes } = useGuideProgress({ enabled: authenticated });
@@ -104,6 +112,14 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   const syncLocal = useCallback((row: GuideProgressRecord) => {
     setLocalProgress(upsertLocalProgress(row));
   }, []);
+
+  // Keep a snapshot for exit animation after `active` becomes null
+  useLayoutEffect(() => {
+    if (active) {
+      const def = getGuide(active.guideId);
+      if (def) setRenderedGuide({ def, stepIndex: active.stepIndex });
+    }
+  }, [active]);
 
   const startGuide = useCallback(
     (guideId: string) => {
@@ -243,8 +259,19 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   const acceptWelcomeTour = useCallback(() => {
     setWelcomeSeen(true);
     setShowWelcome(false);
-    startGuide("welcome");
-  }, [startGuide]);
+    if (welcomeHandoffRef.current) window.clearTimeout(welcomeHandoffRef.current);
+    // Let the welcome modal exit animation finish before the tour spotlight fades in
+    welcomeHandoffRef.current = window.setTimeout(
+      () => startGuide("welcome"),
+      reducedMotion ? 0 : 220
+    );
+  }, [startGuide, reducedMotion]);
+
+  useEffect(() => {
+    return () => {
+      if (welcomeHandoffRef.current) window.clearTimeout(welcomeHandoffRef.current);
+    };
+  }, []);
 
   // First-login welcome
   useEffect(() => {
@@ -279,7 +306,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     startGuide,
   ]);
 
-  // Dismiss when navigating away mid-guide if route-bound and target gone too long handled in overlay
+  // Dismiss when navigating away mid-guide if route-bound
   useEffect(() => {
     if (!active) return;
     const def = getGuide(active.guideId);
@@ -317,14 +344,16 @@ export function GuideProvider({ children }: { children: ReactNode }) {
         onTour={acceptWelcomeTour}
         onSkip={skipWelcome}
       />
-      {active && getGuide(active.guideId) && (
+      {renderedGuide && (
         <GuideOverlay
-          guide={getGuide(active.guideId)!}
-          stepIndex={active.stepIndex}
+          guide={renderedGuide.def}
+          stepIndex={active ? active.stepIndex : renderedGuide.stepIndex}
           reducedMotion={reducedMotion}
+          open={!!active}
           onNext={nextStep}
           onBack={prevStep}
           onSkip={skipGuide}
+          onExited={() => setRenderedGuide(null)}
         />
       )}
     </GuideContext.Provider>

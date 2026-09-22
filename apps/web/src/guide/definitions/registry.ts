@@ -68,10 +68,11 @@ export const GUIDE_DEFINITIONS: GuideDef[] = [
       },
       {
         id: "dash-help",
-        target: "[data-guide='help-button']",
+        target: "[data-guide='nav-profile']",
         title: "Need help later?",
-        description: "Open Help anytime for articles, FAQ, and product tours.",
-        placement: "left",
+        description:
+          "Find the Help Center anytime from your Profile tab — articles, FAQ, and product tours.",
+        placement: "top",
         optional: true,
       },
     ],

@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import Logo from "../../components/Logo";
+import { prefersReducedMotion } from "../lib/storage";
 
 interface GuideWelcomeModalProps {
   open: boolean;
@@ -6,8 +8,39 @@ interface GuideWelcomeModalProps {
   onSkip: () => void;
 }
 
+const EXIT_MS = 220;
+
 export default function GuideWelcomeModal({ open, onTour, onSkip }: GuideWelcomeModalProps) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(false);
+  const reducedMotion = prefersReducedMotion();
+  const exitTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (exitTimerRef.current) {
+      window.clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+    if (open) {
+      setMounted(true);
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
+      return () => cancelAnimationFrame(id);
+    }
+    setVisible(false);
+    const ms = reducedMotion ? 0 : EXIT_MS;
+    exitTimerRef.current = window.setTimeout(() => setMounted(false), ms);
+    return () => {
+      if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current);
+    };
+  }, [open, reducedMotion]);
+
+  if (!mounted) return null;
+
+  const transition = reducedMotion
+    ? undefined
+    : `opacity ${EXIT_MS}ms ease, transform ${EXIT_MS}ms cubic-bezier(0.22,1,0.36,1)`;
 
   return (
     <div
@@ -15,12 +48,18 @@ export default function GuideWelcomeModal({ open, onTour, onSkip }: GuideWelcome
       role="dialog"
       aria-modal="true"
       aria-labelledby="sportza-welcome-title"
+      style={{ pointerEvents: open ? "auto" : "none" }}
     >
       <button
         type="button"
-        className="absolute inset-0 bg-slate-950/75"
+        className="absolute inset-0"
         aria-label="Dismiss welcome"
         onClick={onSkip}
+        style={{
+          backgroundColor: "rgba(2, 6, 23, 0.75)",
+          opacity: visible ? 1 : 0,
+          transition: reducedMotion ? undefined : `opacity ${EXIT_MS}ms ease`,
+        }}
       />
       <div
         className="relative z-10 mx-4 mb-4 w-full max-w-md rounded-2xl px-6 py-7 sm:mb-0"
@@ -28,6 +67,9 @@ export default function GuideWelcomeModal({ open, onTour, onSkip }: GuideWelcome
           background: "linear-gradient(165deg, #1E3A8A 0%, #0F172A 55%, #0B1220 100%)",
           border: "1px solid rgba(59,130,246,0.35)",
           boxShadow: "0 24px 60px rgba(0,0,0,0.45)",
+          opacity: visible ? 1 : 0,
+          transform: visible ? "translateY(0) scale(1)" : "translateY(16px) scale(0.96)",
+          transition,
         }}
       >
         <div className="mb-4 flex justify-center">

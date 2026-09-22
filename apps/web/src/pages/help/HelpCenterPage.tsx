@@ -1,12 +1,43 @@
 import { Link } from "react-router-dom";
-import { LifeBuoy, MessageCircle, Flag } from "lucide-react";
+import {
+  LifeBuoy,
+  MessageCircle,
+  Flag,
+  Compass,
+  Home,
+  MapPin,
+  Zap,
+  Dumbbell,
+  Target,
+  BarChart3,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react";
 import HelpSearch from "../../help/components/HelpSearch";
 import HelpCategoryCard from "../../help/components/HelpCategoryCard";
 import HelpArticleCard from "../../help/components/HelpArticleCard";
 import { HELP_CATEGORIES, getPopularArticles } from "../../help/content/registry";
+import { getGuidesForRole } from "../../guide/definitions/registry";
+import GuideTrigger from "../../guide/components/GuideTrigger";
+import { useRole } from "../../context/RoleContext";
+
+const GUIDE_ICONS: Record<string, LucideIcon> = {
+  welcome: Compass,
+  dashboard: Home,
+  "venue-booking": MapPin,
+  "open-play": Zap,
+  training: Dumbbell,
+  match: Target,
+  stats: BarChart3,
+  tournament: Trophy,
+};
 
 export default function HelpCenterPage() {
   const popular = getPopularArticles(undefined, 7);
+  const { activeRole } = useRole();
+  const guides = getGuidesForRole(activeRole).sort(
+    (a, b) => (b.priority ?? 0) - (a.priority ?? 0)
+  );
 
   return (
     <div className="px-4 pb-8 pt-2" data-guide="help-center">
@@ -23,6 +54,45 @@ export default function HelpCenterPage() {
       </header>
 
       <HelpSearch autoFocus />
+
+      {guides.length > 0 && (
+        <section className="mt-8" aria-label="Product tours">
+          <h2 className="mb-3 text-sm font-semibold" style={{ color: "#CBD5E1" }}>
+            Take a tour
+          </h2>
+          <div className="flex flex-col gap-2">
+            {guides.map((g) => {
+              const Icon = GUIDE_ICONS[g.id] ?? Compass;
+              return (
+                <GuideTrigger
+                  key={g.id}
+                  guideId={g.id}
+                  className="flex w-full items-center gap-3 rounded-xl p-3.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                  style={{
+                    backgroundColor: "rgba(30,41,59,0.85)",
+                    border: "1px solid rgba(148,163,184,0.12)",
+                  }}
+                >
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: "rgba(59,130,246,0.12)" }}
+                  >
+                    <Icon className="h-4 w-4" style={{ color: "#3B82F6" }} aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold" style={{ color: "#F1F5F9" }}>
+                      {g.title}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "#94A3B8" }}>
+                      {g.description}
+                    </p>
+                  </div>
+                </GuideTrigger>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="mb-3 text-sm font-semibold" style={{ color: "#CBD5E1" }}>
