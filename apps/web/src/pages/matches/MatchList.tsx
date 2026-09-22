@@ -76,7 +76,7 @@ export default function MatchList() {
   const sports: Array<{ id: number; name: string; displayName: string }> = (sportsRes as any)?.data ?? [];
 
   return (
-    <div className="min-h-screen bg-[#0F172A] pb-28">
+    <div className="min-h-screen bg-[#0F172A] pb-28" data-guide="matches-list">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-[#0F172A]">
         <div className="px-4 pt-8 pb-3">

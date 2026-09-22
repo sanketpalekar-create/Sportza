@@ -6,7 +6,7 @@ import type {
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface TennisConfig extends MatchConfig {
-  sport: "tennis";
+  sport: "tennis" | "padel";
   /** Total sets in the match — must be odd (1, 3, 5) */
   sets: number;
   /** Games needed to win a set (standard = 6) */

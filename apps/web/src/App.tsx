@@ -84,6 +84,10 @@ import AdminOnboarding from "./pages/admin/AdminOnboarding";
 import AdminVenues from "./pages/admin/AdminVenues";
 import AdminLedger from "./pages/admin/AdminLedger";
 import AdminAudit from "./pages/admin/AdminAudit";
+import HelpCenterPage from "./pages/help/HelpCenterPage";
+import HelpCategoryPage from "./pages/help/HelpCategoryPage";
+import HelpArticlePage from "./pages/help/HelpArticlePage";
+import { GuideProvider } from "./guide/components/GuideProvider";
 
 export default function App() {
   useEffect(() => {
@@ -92,6 +96,7 @@ export default function App() {
   }, []);
 
   return (
+    <GuideProvider>
     <Routes>
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
@@ -101,6 +106,9 @@ export default function App() {
       </Route>
 
       <Route element={<MainLayout />}>
+        <Route path="/help" element={<HelpCenterPage />} />
+        <Route path="/help/:category" element={<HelpCategoryPage />} />
+        <Route path="/help/:category/:slug" element={<HelpArticlePage />} />
         <Route path="/venues" element={<VenueList />} />
         <Route path="/venues/:id" element={<VenueDetail />} />
         <Route path="/training" element={<TrainingDiscovery />} />
@@ -200,5 +208,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </GuideProvider>
   );
 }

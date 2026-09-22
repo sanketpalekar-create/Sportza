@@ -232,5 +232,12 @@ export {
   // Group assignments
   useSaveGroupAssignments,
   useClearGroupAssignments,
+  // Product guides
+  useGuideProgress,
+  useGuides,
+  useStartGuide,
+  useUpdateGuideProgress,
+  useCompleteGuide,
+  useSkipGuide,
 } from "./hooks";
 export type { NotifPrefsData, PushSubscriptionPayload } from "./hooks";

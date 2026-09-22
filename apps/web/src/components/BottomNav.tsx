@@ -66,6 +66,7 @@ export default function BottomNav() {
 
   return (
     <nav
+      data-guide="bottom-nav"
       className="fixed bottom-0 inset-x-0 z-40"
       style={{
         backgroundColor: "#0F172A",

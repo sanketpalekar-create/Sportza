@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser, usePlayerStats, useMyMatchHistory, useMySkillRatings, useRatingHistory } from "@sportza/api-client";
 import { matchOutcome } from "./matchOutcome";
 import { Trophy, Clock, Target, Zap, BarChart3, ChevronRight, Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { format } from "date-fns";
+import ContextualHelp from "../../help/components/ContextualHelp";
 
 const SPORT_COLORS: Record<string, string> = {
   badminton:  "#3B82F6",
@@ -82,6 +83,10 @@ export default function StatsOverview() {
   const { data: userRes }   = useCurrentUser();
   const { data: statsData } = usePlayerStats();
   const { data: matchesRes } = useMyMatchHistory({ limit: 50 });
+
+  useEffect(() => {
+    try { localStorage.setItem("sportza_stats_visited", "1"); } catch { /* ignore */ }
+  }, []);
 
   const user = (userRes as any)?.data ?? (userRes as any);
   const userId: number = (user as any)?.id ?? 0;
@@ -203,15 +208,16 @@ export default function StatsOverview() {
   const resultLabel  = { win: "Win", loss: "Loss", draw: "Draw" };
 
   return (
-    <div className="min-h-screen bg-[#0F172A] pb-24">
+    <div className="min-h-screen bg-[#0F172A] pb-24" data-guide="stats-overview">
 
       {/* ── Header ── */}
       <div className="px-4 pt-8 pb-2">
         <h1 className="text-white" style={{ fontSize: "28px", fontWeight: "700", lineHeight: "130%" }}>
           {userName === "Your" ? "Your Stats" : `${userName}'s Stats`}
         </h1>
-        <p className="text-[#94A3B8]" style={{ fontSize: "13px", marginTop: "4px" }}>
+        <p className="text-[#94A3B8] flex items-center gap-2" style={{ fontSize: "13px", marginTop: "4px" }}>
           Track your performance across all sports
+          <ContextualHelp articleId="how-stats-calculated" label="How are stats calculated?" />
         </p>
       </div>
 

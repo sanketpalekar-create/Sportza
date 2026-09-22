@@ -310,7 +310,7 @@ const MENU_SECTIONS = [
   {
     section: "Support",
     items: [
-      { id: 7, label: "Help Center", icon: HelpCircle, to: null, comingSoon: true  },
+      { id: 7, label: "Help Center", icon: HelpCircle, to: "/help", comingSoon: false  },
       { id: 8, label: "Log Out",     icon: LogOut,     to: null, danger: true       },
     ],
   },

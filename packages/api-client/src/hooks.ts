@@ -2096,3 +2096,74 @@ export function useClearGroupAssignments(id: number) {
     },
   });
 }
+
+// ─── Product Guides ─────────────────────────────────────
+
+export function useGuideProgress(options?: { enabled?: boolean }) {
+  return useQuery<any>({
+    queryKey: ["guides", "progress"],
+    queryFn: () => apiClient.get("/guides/progress").then((r) => r.data),
+    staleTime: 60 * 1000,
+    retry: 1,
+    ...options,
+  });
+}
+
+export function useGuides(options?: { enabled?: boolean }) {
+  return useQuery<any>({
+    queryKey: ["guides"],
+    queryFn: () => apiClient.get("/guides").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useStartGuide() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ guideId, version = 1 }: { guideId: string; version?: number }) =>
+      apiClient.post(`/guides/${guideId}/start`, { version }).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["guides", "progress"] }),
+  });
+}
+
+export function useUpdateGuideProgress() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      guideId,
+      version = 1,
+      currentStep,
+      completed,
+      skipped,
+    }: {
+      guideId: string;
+      version?: number;
+      currentStep?: number;
+      completed?: boolean;
+      skipped?: boolean;
+    }) =>
+      apiClient
+        .patch(`/guides/${guideId}/progress`, { version, currentStep, completed, skipped })
+        .then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["guides", "progress"] }),
+  });
+}
+
+export function useCompleteGuide() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ guideId, version = 1 }: { guideId: string; version?: number }) =>
+      apiClient.post(`/guides/${guideId}/complete`, null, { params: { version } }).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["guides", "progress"] }),
+  });
+}
+
+export function useSkipGuide() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ guideId, version = 1 }: { guideId: string; version?: number }) =>
+      apiClient.post(`/guides/${guideId}/skip`, null, { params: { version } }).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["guides", "progress"] }),
+  });
+}

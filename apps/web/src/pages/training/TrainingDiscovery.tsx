@@ -113,6 +113,7 @@ function BatchCard({ batch }: { batch: Batch }) {
   return (
     <button
       onClick={() => navigate(`/training/${batch.id}`)}
+      data-guide="training-batch"
       className="w-full text-left transition-all duration-200 active:scale-[0.98] p-4"
       style={{ borderRadius: "20px", backgroundColor: "#1E293B", border: "1px solid rgba(255,255,255,0.05)" }}
     >
@@ -316,7 +317,7 @@ export default function TrainingDiscovery() {
   return (
     <div className="min-h-screen bg-[#0F172A] pb-24">
       {/* ── Sticky header ── */}
-      <div className="sticky top-0 z-20 bg-[#0F172A]">
+      <div className="sticky top-0 z-20 bg-[#0F172A]" data-guide="training-search">
         {/* Title */}
         <div className="flex items-center justify-between px-4 pt-6 pb-3">
           <div>

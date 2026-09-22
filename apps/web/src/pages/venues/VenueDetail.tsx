@@ -468,6 +468,7 @@ export default function VenueDetail() {
             <button
               onClick={handleConfirmBook}
               disabled={batchBookMutation.isPending || cart.length === 0}
+              data-guide="book-button"
               className="w-full py-4 text-white"
               style={{
                 borderRadius: "16px",

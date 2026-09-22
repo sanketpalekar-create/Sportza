@@ -24,3 +24,6 @@ export type { RatingProps } from "./Rating";
 
 export { StatCard } from "./StatCard";
 export type { StatCardProps, TrendDirection } from "./StatCard";
+
+export { Popover } from "./Popover";
+export type { PopoverProps } from "./Popover";

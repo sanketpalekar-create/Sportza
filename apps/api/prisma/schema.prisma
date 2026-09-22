@@ -103,6 +103,7 @@ model User {
   adminTargetLogs    AdminAuditLog[]         @relation("AuditTarget")
   initiatedApprovals AdminApprovalRequest[]  @relation("ApprovalInitiator")
   reviewedApprovals  AdminApprovalRequest[]  @relation("ApprovalReviewer")
+  guideProgress      UserGuideProgress[]
 
   @@index([isActive])
   @@map("users")
@@ -1493,4 +1494,25 @@ model AdminApprovalRequest {
   @@index([initiatorId])
   @@index([type, status])
   @@map("admin_approval_requests")
+}
+
+// ─── Product Guide Progress ──────────────────────────────────
+
+model UserGuideProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  guideId     String    @db.VarChar(50)
+  version     Int       @default(1)
+  currentStep Int       @default(0)
+  completed   Boolean   @default(false)
+  skipped     Boolean   @default(false)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guideId, version])
+  @@index([userId])
+  @@map("user_guide_progress")
 }

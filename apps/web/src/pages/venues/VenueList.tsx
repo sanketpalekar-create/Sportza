@@ -84,7 +84,11 @@ function VenueCard({ venue, nextSlot }: { venue: Venue; nextSlot: string }) {
 
   return (
     <button
-      onClick={() => navigate(`/venues/${venue.id}`)}
+      onClick={() => {
+        try { localStorage.setItem("sportza_venue_visited", "1"); } catch { /* ignore */ }
+        navigate(`/venues/${venue.id}`);
+      }}
+      data-guide="venue-card"
       className="w-full text-left overflow-hidden transition-all duration-200 active:scale-[0.98]"
       style={{
         borderRadius: "16px",
@@ -458,7 +462,7 @@ export default function VenueList() {
         </div>
 
         {/* Search bar + Near Me */}
-        <div className="px-4 mb-3 flex gap-2">
+        <div className="px-4 mb-3 flex gap-2" data-guide="venue-search">
           <div
             className="flex items-center gap-3 px-4 flex-1"
             style={{

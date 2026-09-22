@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import { RoleBadge, RoleSwitchModal } from "../components/RoleSwitcher";
+import HelpButton from "../help/components/HelpButton";
 
 export default function MainLayout() {
   const [showModal, setShowModal] = useState(false);
@@ -29,6 +30,7 @@ export default function MainLayout() {
         </main>
 
         <BottomNav />
+        <HelpButton />
 
         {showModal && <RoleSwitchModal onClose={() => setShowModal(false)} />}
       </div>

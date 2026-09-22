@@ -44,7 +44,7 @@ export default function TournamentList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F172A] pb-28">
+    <div className="min-h-screen bg-[#0F172A] pb-28" data-guide="tournament-list">
       <div className="px-4 pt-8 pb-4 flex items-center justify-between">
         <div>
           <h1 className="text-white" style={{ fontSize: "22px", fontWeight: "800" }}>Tournaments</h1>

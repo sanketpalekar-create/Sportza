@@ -99,7 +99,7 @@ export default function ScoreMatch() {
   const liveCount = allMatches.filter((m) => m.status === "live").length;
 
   return (
-    <div className="min-h-screen bg-[#0F172A] pb-28 max-w-md mx-auto">
+    <div className="min-h-screen bg-[#0F172A] pb-28 max-w-md mx-auto" data-guide="score-match">
 
       {/* ── Header ── */}
       <div className="px-4 pt-8 pb-4">

@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useRole } from "../context/RoleContext";
 import { useUserLocation } from "../context/LocationContext";
 import LocationSheet from "../components/LocationSheet";
+import GuideChecklist from "../guide/components/GuideChecklist";
 
 // ── Time-based greeting ────────────────────────────────────────────────────────
 function getGreeting(): string {
@@ -347,7 +348,7 @@ export default function Home() {
   if (activeRole === "venue_owner") return <VenueOwnerHome  userName={userName} initials={initials} />;
 
   return (
-    <div className="pb-24 max-w-md mx-auto">
+    <div className="pb-24 max-w-md mx-auto" data-guide="dashboard">
 
       {/* ── Header ── */}
       <div className="px-4 pt-6 mb-6 flex items-start justify-between">
@@ -365,6 +366,8 @@ export default function Home() {
         </Link>
       </div>
       <LocationSheet open={showLocSheet} onClose={() => setShowLocSheet(false)} />
+
+      <GuideChecklist />
 
       {/* ── Quick Actions — 4-col ── */}
       <div className="px-4 mb-6">
@@ -526,7 +529,7 @@ export default function Home() {
 
       {/* ── Nearby Venues — horizontal scroll ── */}
       {nearbyVenues.length > 0 && (
-        <div className="mb-6">
+        <div className="mb-6" data-guide="home-venues">
           <div className="flex items-center justify-between px-4 mb-3">
             <h2 className="text-white" style={{ fontSize: "16px", fontWeight: "700" }}>
               {isLocationBased ? "More Near You" : "Nearby Venues"}

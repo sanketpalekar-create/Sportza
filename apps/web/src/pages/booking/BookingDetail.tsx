@@ -127,8 +127,13 @@ function CancelModal({
         <h2 className="text-white text-center mb-2" style={{ fontSize: "20px", fontWeight: "800" }}>
           Cancel Booking?
         </h2>
-        <p className="text-[#94A3B8] text-center mb-6" style={{ fontSize: "14px", lineHeight: "1.6" }}>
+        <p className="text-[#94A3B8] text-center mb-2" style={{ fontSize: "14px", lineHeight: "1.6" }}>
           This action cannot be undone. Your slot will be released.
+        </p>
+        <p className="text-center mb-6" style={{ fontSize: "12px" }}>
+          <a href="/help/bookings/cancel-a-booking" className="text-[#60A5FA] font-semibold">
+            What happens if I cancel?
+          </a>
         </p>
 
         {/* Refund info */}

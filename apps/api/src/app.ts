@@ -53,6 +53,7 @@ import notificationPreferenceRoutes from "./routes/notificationPreferences";
 import pushSubscriptionRoutes from "./routes/pushSubscriptions";
 import mobilePushTokenRoutes from "./routes/mobilePushTokens";
 import walletRoutes from "./routes/wallet";
+import guideRoutes from "./routes/guides";
 import adminRoutes from "./routes/admin/index";
 import cronRoutes from "./routes/cron";
 
@@ -226,6 +227,7 @@ export function createApp(): Express {
   app.use("/api/push-subscriptions", pushSubscriptionRoutes);
   app.use("/api/mobile-push-tokens", mobilePushTokenRoutes);
   app.use("/api/wallet", walletRoutes);
+  app.use("/api/guides", guideRoutes);
   app.use("/api/admin", adminRoutes);
 
   // Railway / single-domain: serve the Vite SPA for non-API routes so

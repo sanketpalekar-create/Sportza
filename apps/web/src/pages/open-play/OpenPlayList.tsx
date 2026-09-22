@@ -72,12 +72,14 @@ export default function OpenPlayList() {
   const filterSports = sports;
 
   return (
-    <div className="pb-24 px-4 pt-8 max-w-md mx-auto">
+    <div className="pb-24 px-4 pt-8 max-w-md mx-auto" data-guide="open-play-list">
       {/* ── Header ── */}
       <div className="mb-8">
-        <h1 className="text-white mb-1" style={{ fontSize: "28px", fontWeight: "700", lineHeight: "130%" }}>
-          Open Play
-        </h1>
+        <div className="mb-2 flex items-center gap-2">
+          <h1 className="text-white mb-0" style={{ fontSize: "28px", fontWeight: "700", lineHeight: "130%" }}>
+            Open Play
+          </h1>
+        </div>
         <p className="text-[#94A3B8]" style={{ fontSize: "14px", fontWeight: "500" }}>
           Join pickup games in your area
         </p>
@@ -238,6 +240,7 @@ export default function OpenPlayList() {
             return (
               <div
                 key={op.id as number}
+                data-guide="join-open-play"
                 className="bg-[#1E293B] overflow-hidden"
                 style={{ borderRadius: "16px", border: "1px solid rgba(255, 255, 255, 0.05)" }}
               >
